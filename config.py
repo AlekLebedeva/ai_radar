@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     admin_static_path: str = "static/admin"
     parser_interval_hours: int = 48
 
+    # ─── Admin Auth (добавлено) ───
+    admin_username: str = "admin"
+    admin_password: str = "admin"
+
     class Config:
         env_file = ".env"
 
