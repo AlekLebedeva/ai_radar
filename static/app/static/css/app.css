@@ -1,0 +1,303 @@
+/* ============================================
+   AI RADAR App — Main Application Styles
+   ============================================ */
+
+:root {
+    --bg: #0f172a;
+    --bg-card: #1e293b;
+    --bg-hover: #334155;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --accent-green: #10b981;
+    --border: #334155;
+    --radius: 8px;
+    --radius-lg: 12px;
+}
+
+/* Demo toggle */
+.demo-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-card);
+    padding: 8px 14px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+.demo-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+}
+
+.switch input { opacity: 0; width: 0; height: 0; }
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: var(--bg-hover);
+    border-radius: 22px;
+    transition: 0.3s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+input:checked + .slider { background: var(--accent-green); }
+input:checked + .slider:before { transform: translateX(18px); }
+
+/* Screens */
+.screen {
+    display: none;
+    min-height: 100vh;
+}
+
+.screen.active { display: block; }
+
+/* Onboarding */
+.onboarding-container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 60px 24px;
+    text-align: center;
+}
+
+.logo-big {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 32px;
+}
+
+.onboarding-container h1 {
+    font-size: 36px;
+    margin-bottom: 16px;
+}
+
+.subtitle {
+    font-size: 16px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 40px;
+}
+
+.features-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 40px;
+    text-align: left;
+}
+
+.feature-mini {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    font-size: 14px;
+}
+
+.feature-mini-icon { font-size: 22px; }
+
+/* Interests */
+.interests-container {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 60px 24px;
+    text-align: center;
+}
+
+.interests-container h2 { font-size: 28px; margin-bottom: 12px; }
+
+.interests-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin: 32px 0;
+}
+
+.interest-chip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.interest-chip:hover { border-color: var(--text-muted); }
+.interest-chip.selected {
+    border-color: var(--accent);
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent);
+}
+
+.interests-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 32px;
+}
+
+/* Main screen tiles */
+.main-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 24px;
+}
+
+.tiles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.tile {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.tile:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    border-color: var(--accent);
+}
+
+.tile-icon { font-size: 40px; margin-bottom: 16px; }
+.tile h3 { font-size: 20px; margin-bottom: 10px; }
+.tile p { color: var(--text-muted); font-size: 14px; line-height: 1.5; margin-bottom: 16px; }
+
+.tile-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* User menu */
+.user-menu {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-email {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* Placeholder pages */
+.placeholder-page {
+    max-width: 600px;
+    margin: 80px auto;
+    text-align: center;
+    padding: 0 24px;
+}
+
+.placeholder-icon { font-size: 64px; margin-bottom: 24px; }
+.placeholder-page h2 { font-size: 28px; margin-bottom: 16px; }
+.placeholder-page p { color: var(--text-muted); margin-bottom: 32px; }
+
+/* Settings page */
+.settings-page {
+    max-width: 700px;
+    margin: 40px auto;
+    padding: 0 24px;
+}
+
+.settings-page h2 { margin-bottom: 32px; }
+
+.settings-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 20px;
+}
+
+.settings-section h3 {
+    font-size: 16px;
+    margin-bottom: 20px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.setting-row:last-child { border-bottom: none; }
+
+.setting-row select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: var(--radius);
+}
+
+.settings-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+/* Buttons */
+.btn-large { padding: 14px 36px; font-size: 16px; }
+
+.btn-back {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.btn-back:hover { color: var(--text); }

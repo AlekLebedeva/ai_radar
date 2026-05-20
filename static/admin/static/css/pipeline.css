@@ -1,0 +1,22 @@
+/* ============================================
+   AI RADAR — Pipeline Visualization
+   ============================================ */
+
+.pipeline-container { padding: 40px; min-height: 300px; display: flex; align-items: center; justify-content: center; }
+.pipeline-legend { display: flex; gap: 20px; padding: 16px 20px; border-top: 1px solid var(--border-color); justify-content: center; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot-idle { background: var(--text-muted); }
+.dot-running { background: var(--accent-blue); animation: pulse 2s infinite; }
+.dot-completed { background: var(--accent-green); }
+.dot-failed { background: var(--accent-red); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+.pipeline-svg { width: 100%; max-width: 900px; }
+.pipeline-node { cursor: pointer; }
+.pipeline-node rect { transition: all 0.3s; }
+.pipeline-node:hover rect { filter: brightness(1.2); }
+
+@media (max-width: 1024px) {
+    .stats-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}

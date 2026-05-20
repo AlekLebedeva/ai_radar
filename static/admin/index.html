@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Radar — Админка</title>
+    <link rel="stylesheet" href="/admin/static/css/base.css">
+    <link rel="stylesheet" href="/admin/static/css/components.css">
+    <link rel="stylesheet" href="/admin/static/css/modal.css">
+    <link rel="stylesheet" href="/admin/static/css/pipeline.css">
+</head>
+<body>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">&#9673;</span>
+                    <span class="logo-text">AI RADAR</span>
+                </div>
+                <div class="logo-sub">Админка</div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">&#128202;</span>
+                    <span class="nav-label">Дашборд</span>
+                </a>
+                <a href="#" class="nav-item" data-page="pipeline">
+                    <span class="nav-icon">&#128260;</span>
+                    <span class="nav-label">Pipeline</span>
+                </a>
+                <a href="#" class="nav-item" data-page="tasks">
+                    <span class="nav-icon">&#9889;</span>
+                    <span class="nav-label">Задачи парсеров</span>
+                </a>
+                <a href="#" class="nav-item" data-page="logs">
+                    <span class="nav-icon">&#128203;</span>
+                    <span class="nav-label">Логи</span>
+                </a>
+                <a href="#" class="nav-item" data-page="sources">
+                    <span class="nav-icon">&#127760;</span>
+                    <span class="nav-label">Источники</span>
+                </a>
+                <a href="#" class="nav-item" data-page="dbstats">
+                    <span class="nav-icon">&#128452;</span>
+                    <span class="nav-label">База данных</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="version">v1.0.0 MVP</div>
+            </div>
+        </aside>
+
+        <main class="main">
+            <header class="main-header">
+                <h1 class="page-title" id="page-title">Дашборд</h1>
+                <div class="header-actions">
+                    <button class="btn btn-refresh" id="btn-refresh" title="Обновить">
+                        &#128260; Обновить
+                    </button>
+                </div>
+            </header>
+
+            <div class="page active" id="page-dashboard">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon stat-raw">&#128230;</div>
+                        <div class="stat-value" id="stat-raw">-</div>
+                        <div class="stat-label">Сырых записей</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-enriched">&#10024;</div>
+                        <div class="stat-value" id="stat-enriched">-</div>
+                        <div class="stat-label">Обработано LLM</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-vectors">&#128269;</div>
+                        <div class="stat-value" id="stat-vectors">-</div>
+                        <div class="stat-label">Векторов FAISS</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-pending">&#9203;</div>
+                        <div class="stat-value" id="stat-pending">-</div>
+                        <div class="stat-label">В очереди</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-failed">&#10060;</div>
+                        <div class="stat-value" id="stat-failed">-</div>
+                        <div class="stat-label">Ошибок</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-tasks">&#9889;</div>
+                        <div class="stat-value" id="stat-tasks">-</div>
+                        <div class="stat-label">Всего задач</div>
+                    </div>
+                </div>
+                <div class="dashboard-row">
+                    <div class="panel panel-wide">
+                        <div class="panel-header">
+                            <h3>Последние задачи</h3>
+                            <a href="#" class="link" data-page="tasks">Все задачи &rarr;</a>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="data-table" id="dashboard-tasks-table">
+                                <thead><tr><th>Парсер</th><th>Статус</th><th>Собрано</th><th>Новых</th><th>Начало</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page" id="page-pipeline">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>Pipeline Status (DAG)</h3>
+                        <span class="badge badge-live">&#9679; LIVE</span>
+                    </div>
+                    <div class="pipeline-container" id="pipeline-visual"></div>
+                    <div class="pipeline-legend">
+                        <div class="legend-item"><span class="legend-dot dot-idle"></span> Ожидание</div>
+                        <div class="legend-item"><span class="legend-dot dot-running"></span> В работе</div>
+                        <div class="legend-item"><span class="legend-dot dot-completed"></span> Завершено</div>
+                        <div class="legend-item"><span class="legend-dot dot-failed"></span> Ошибка</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page" id="page-tasks">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>Задачи парсеров</h3>
+                        <button class="btn btn-primary" id="btn-new-task">+ Новая задача</button>
+                    </div>
+                    <div class="filters-bar">
+                        <select class="filter-select" id="filter-task-status">
+                            <option value="">Все статусы</option>
+                            <option value="pending">Ожидание</option>
+                            <option value="running">В работе</option>
+                            <option value="completed">Завершено</option>
+                            <option value="failed">Ошибка</option>
+                        </select>
+                        <input type="text" class="filter-input" id="filter-task-parser" placeholder="Парсер...">
+                        <button class="btn btn-secondary" id="btn-filter-tasks">Применить</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table" id="tasks-table">
+                            <thead><tr><th>ID</th><th>Парсер</th><th>Статус</th><th>Период</th><th>Собрано</th><th>Новых</th><th>Запущено</th><th>Действия</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal" id="modal-new-task">
+                    <div class="modal-overlay"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Новая задача парсера</h3>
+                            <button class="modal-close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="form-new-task">
+                                <div class="form-group">
+                                    <label>Источник</label>
+                                    <select class="form-control" id="task-parser" required>
+                                        <option value="">Выберите...</option>
+                                        <option value="huggingface">HuggingFace</option>
+                                        <option value="github">GitHub</option>
+                                        <option value="arxiv">arXiv</option>
+                                        <option value="pypi">PyPI</option>
+                                        <option value="web">Web/Reddit</option>
+                                    </select>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Дата от</label>
+                                        <input type="datetime-local" class="form-control" id="task-date-from" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Дата до</label>
+                                        <input type="datetime-local" class="form-control" id="task-date-to" required>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Макс. записей (опц.)</label>
+                                    <input type="number" class="form-control" id="task-max-items" value="1000" min="1" max="50000">
+                                </div>
+                                <div class="form-group">
+                                    <label>Фильтры JSON (опц.)</label>
+                                    <textarea class="form-control" id="task-filters" rows="3" placeholder='{"tags":["llm"], "min_stars": 100}'></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary modal-cancel">Отмена</button>
+                            <button class="btn btn-primary" id="btn-submit-task">Запустить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page" id="page-logs">
+                <div class="panel">
+                    <div class="panel-header"><h3>Логи парсеров</h3></div>
+                    <div class="filters-bar">
+                        <select class="filter-select" id="filter-log-parser">
+                            <option value="">Все парсеры</option>
+                            <option value="huggingface">HuggingFace</option>
+                            <option value="github">GitHub</option>
+                            <option value="arxiv">arXiv</option>
+                            <option value="pypi">PyPI</option>
+                            <option value="web">Web</option>
+                        </select>
+                        <select class="filter-select" id="filter-log-status">
+                            <option value="">Все статусы</option>
+                            <option value="running">В работе</option>
+                            <option value="completed">Завершено</option>
+                            <option value="failed">Ошибка</option>
+                        </select>
+                        <input type="date" class="filter-input" id="filter-log-date-from">
+                        <input type="date" class="filter-input" id="filter-log-date-to">
+                        <button class="btn btn-secondary" id="btn-filter-logs">Применить</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table" id="logs-table">
+                            <thead><tr><th>Время</th><th>Парсер</th><th>Статус</th><th>Записей</th><th>Ошибок</th><th>Длительность</th><th>Детали</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page" id="page-sources">
+                <div class="panel">
+                    <div class="panel-header"><h3>Источники данных</h3></div>
+                    <div class="table-wrap">
+                        <table class="data-table" id="sources-table">
+                            <thead><tr><th>ID</th><th>Название</th><th>Код</th><th>API URL</th><th>Auth</th><th>Rate Limit</th><th>Статус</th><th>Действия</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page" id="page-dbstats">
+                <div class="stats-grid" id="db-stats-grid"></div>
+                <div class="panel">
+                    <div class="panel-header"><h3>Таблицы базы данных</h3></div>
+                    <div class="table-wrap">
+                        <table class="data-table" id="db-tables-table">
+                            <thead><tr><th>Таблица</th><th>Записей</th><th>Последнее обновление</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/admin/static/js/api.js"></script>
+    <script src="/admin/static/js/utils.js"></script>
+    <script src="/admin/static/js/modal.js"></script>
+    <script src="/admin/static/js/pages/dashboard.js"></script>
+    <script src="/admin/static/js/pages/pipeline.js"></script>
+    <script src="/admin/static/js/pages/tasks.js"></script>
+    <script src="/admin/static/js/pages/logs.js"></script>
+    <script src="/admin/static/js/pages/sources.js"></script>
+    <script src="/admin/static/js/pages/dbstats.js"></script>
+    <script src="/admin/static/js/app.js"></script>
+</body>
+</html>
