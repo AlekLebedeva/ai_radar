@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent.parent / "data" / "ai_radar.db"
+# ASYNC_DB_PATH = Path(__file__).parent.parent / "data" / "ai_radar_async.db"
 
 
 def init_sqlite():

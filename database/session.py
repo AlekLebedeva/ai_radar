@@ -26,10 +26,12 @@ def _init_postgres():
 def _init_sqlite():
     from database.fallback import init_sqlite
     sqlite_path = init_sqlite()
-    return create_async_engine(
+    # Создаём движок для aiosqlite
+    engine = create_async_engine(
         f"sqlite+aiosqlite:///{sqlite_path}",
         echo=settings.debug,
     )
+    return engine
 
 
 def _ensure_engine():

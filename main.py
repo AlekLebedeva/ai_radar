@@ -20,7 +20,7 @@ from database.session import get_engine_for_lifespan, is_postgres
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: create engine inside lifespan (not at import)."""
+    """Startup: create tables; Shutdown: dispose engine."""
     engine = get_engine_for_lifespan()
     if is_postgres():
         async with engine.begin() as conn:
@@ -33,7 +33,7 @@ app = FastAPI(
     title="AI Radar",
     description="Automated AI innovation monitoring system",
     version="1.0.0",
-    #lifespan=lifespan,
+    #lifespan=lifespan,  # ← РАСКОММЕНТИРОВАН
 )
 
 app.add_middleware(
