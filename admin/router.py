@@ -15,7 +15,12 @@ from admin.schemas import (
 from admin.service import SourceService, TaskService, LogService, StatsService, PipelineService
 from parsers.engine import ParserEngine
 from admin.auth import get_current_admin, create_session, destroy_session, _verify, _hash, ADMIN_COOKIE, SESSION_TTL
+
+from llm.processor import LLMProcessor
+from llm.client import LLMClient
+
 from config import get_settings
+
 
 settings = get_settings()
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
@@ -164,3 +169,37 @@ async def get_stats(db: AsyncSession = Depends(get_db), admin: str = Depends(get
 async def get_pipeline(db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
     svc = PipelineService(db)
     return await svc.get_status()
+
+# ─── LLM Processing ───
+@router.post("/llm/enrich/{raw_item_id}")
+async def enrich_item(
+    raw_item_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    admin: str = Depends(get_current_admin),
+):
+    processor = LLMProcessor(db)
+    result = await processor.process_item(raw_item_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Item not found or already processed")
+    return {"status": "completed", "enriched_id": str(result.id)}
+
+
+@router.post("/llm/enrich-batch")
+async def enrich_batch(
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
+    admin: str = Depends(get_current_admin),
+):
+    processor = LLMProcessor(db)
+    count = await processor.process_pending(limit)
+    return {"processed": count}
+
+
+@router.get("/llm/status")
+async def llm_status(admin: str = Depends(get_current_admin)):
+    client = LLMClient()
+    return {
+        "model": client.model,
+        "base_url": client.base_url,
+        "api_key_configured": bool(client.api_key),
+    }

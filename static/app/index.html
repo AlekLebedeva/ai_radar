@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
     <title>AI Radar</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="stylesheet" href="/app/static/css/base.css">
     <link rel="stylesheet" href="/app/static/css/app.css">
+    <link rel="stylesheet" href="/app/static/css/landing.css">
 </head>
 <body>
     <!-- Demo mode toggle (top-right corner) -->
@@ -84,7 +88,7 @@
             </div>
             <nav class="nav">
                 <a href="/app" class="active">Сервис</a>
-                <a href="/admin">Админка</a>
+                <a href="/admin" onclick="event.preventDefault(); window.location.replace('/admin');">Админка</a>
             </nav>
             <div class="user-menu">
                 <span class="user-email" id="user-email">user@example.com</span>

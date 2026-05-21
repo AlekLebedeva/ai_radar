@@ -3,7 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
     <title>AI Radar — Админка</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <!-- Мгновенная проверка сессии ДО загрузки ресурсов -->
+    <script>
+        (function(){
+            if(!document.cookie.includes('ai_radar_admin_session')){
+                window.location.replace('/admin/login');
+                document.write('');
+                document.close();
+                throw new Error('Unauthorized');
+            }
+        })();
+    </script>
+
     <link rel="stylesheet" href="/admin/static/css/base.css">
     <link rel="stylesheet" href="/admin/static/css/components.css">
     <link rel="stylesheet" href="/admin/static/css/modal.css">
