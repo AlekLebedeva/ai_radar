@@ -29,7 +29,6 @@ def _token() -> str:
 
 
 ADMIN_COOKIE = "ai_radar_admin_session"
-SESSION_TTL = 86400
 
 
 def create_session() -> str:

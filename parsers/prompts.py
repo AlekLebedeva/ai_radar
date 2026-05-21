@@ -1,112 +1,118 @@
-# =============================================================================
-# PROMPTS FOR LLM PROCESSING
-# All prompts in one file for easy testing and correction
-# =============================================================================
+"""
+AI Radar — Промпты для LLM обработки данных
+"""
 
+# --- Классификация домена ---
+CLASSIFY_PROMPT = """Ты — эксперт по классификации AI-моделей.
+Проанализируй модель и определи её домен.
 
-# --- Domain Classification ---
-CLASSIFY_DOMAIN_PROMPT = """\
-You are an AI model classification expert.
-You receive a model name, tags, and description.
-Determine the domain from the list:
-- CV (Computer Vision)
-- NLP (Natural Language Processing)
-- Audio (audio, speech, TTS, ASR)
-- Multimodal
-- RL (Reinforcement Learning)
-- Graph (graph neural networks)
-- Geo (geospatial, GIS)
-- RAG (Retrieval-Augmented Generation)
-- Tabular (tabular data)
-- Generative (general purpose generative)
-- Other
+Доступные домены:
+- CV (Компьютерное зрение)
+- NLP (Обработка естественного языка)
+- Audio (Аудио, речь, TTS, ASR)
+- Multimodal (Мультимодальные)
+- RL (Обучение с подкреплением)
+- Graph (Графовые нейросети)
+- Geo (Геопространственные, ГИС)
+- RAG (Поиск с генерацией)
+- Tabular (Табличные данные)
+- Generative (Генеративные модели общего назначения)
+- Other (Другое)
 
-Also determine up to 3 subcategories.
+Также определи:
+- До 3 подкатегорий
+- Технологический стек (фреймворки, библиотеки)
+- Варианты использования
+- Релевантность для enterprise (0.0-1.0)
 
-Return ONLY JSON in format:
+Верни ТОЛЬКО JSON в формате:
 {
   "domain": "CV",
-  "subcategories": ["Object Detection", "Image Segmentation"],
-  "confidence": 0.92
+  "subcategories": ["Обнаружение объектов", "Сегментация изображений"],
+  "confidence": 0.92,
+  "tech_stack": ["PyTorch", "Transformers"],
+  "use_cases": ["Медицинская диагностика", "Автономное вождение"],
+  "relevance_score": 0.85,
+  "model_size": "large",
+  "language_confirmed": ["en", "ru"]
 }
 
-Name: {title}
-Tags: {tags}
-Description: {description}
+Название: {title}
+Описание: {description}
+Теги: {tags}
 """
 
 
-# --- Summary Generation ---
-SUMMARIZE_PROMPT = """\
-Create a brief summary (2-3 sentences) in English for an AI model.
-Describe: what the model does, what it is used for, key features.
+# --- Генерация саммари ---
+SUMMARIZE_PROMPT = """Создай краткое описание (2-3 предложения) AI-модели на русском языке.
+Опиши: что делает модель, для чего используется, ключевые особенности.
 
-Name: {title}
-Tags: {tags}
-Description: {description}
+Название: {title}
+Описание: {description}
+Теги: {tags}
 
-Summary (EN):
+Верни ТОЛЬКО JSON:
+{
+  "summary_en": "Brief description in English...",
+  "summary_ru": "Краткое описание на русском...",
+  "key_features": ["Feature 1", "Особенность 2"]
+}
 """
 
 
-# --- Translate to Russian ---
-TRANSLATE_PROMPT = """\
-Translate the following text into Russian. Maintain technical accuracy.
+# --- Перевод на русский ---
+TRANSLATE_PROMPT = """Переведи следующий текст на русский язык. Сохрани техническую точность.
 
-Text:
+Текст:
 {text}
 
-Translation (RU):
+Перевод (RU):
 """
 
 
-# --- Extract Tech Stack ---
-EXTRACT_TECH_STACK_PROMPT = """\
-Extract the technology stack from the model description.
-Return a JSON array of strings: frameworks, libraries, programming languages.
+# --- Извлечение технологического стека ---
+EXTRACT_TECH_STACK_PROMPT = """Извлеки технологический стек из описания модели.
+Верни JSON-массив строк: фреймворки, библиотеки, языки программирования.
 
-Description: {description}
-Tags: {tags}
+Описание: {description}
+Теги: {tags}
 
 JSON:
 """
 
 
-# --- Extract Use Cases ---
-EXTRACT_USE_CASES_PROMPT = """\
-Determine 2-4 use cases for the model based on the description.
-Return a JSON array of strings.
+# --- Извлечение вариантов использования ---
+EXTRACT_USE_CASES_PROMPT = """Определи 2-4 варианта использования модели на основе описания.
+Верни JSON-массив строк.
 
-Name: {title}
-Description: {description}
+Название: {title}
+Описание: {description}
 
 JSON:
 """
 
 
-# --- Relevance Score ---
-RELEVANCE_PROMPT = """\
-Rate the relevance of an AI model for enterprise use.
-Consider: maturity, documentation, license, popularity, activity.
-Return a number from 0.0 to 1.0 and a brief justification.
+# --- Оценка релевантности ---
+RELEVANCE_PROMPT = """Оцени релевантность AI-модели для корпоративного использования.
+Учитывай: зрелость, документацию, лицензию, популярность, активность разработки.
+Верни число от 0.0 до 1.0 и краткое обоснование.
 
-Name: {title}
-Stars/Downloads: {popularity}
-License: {license}
-Last update: {updated_at}
+Название: {title}
+Популярность (звёзды/загрузки): {popularity}
+Лицензия: {license}
+Последнее обновление: {updated_at}
 
 JSON:
 {
   "score": 0.85,
-  "reason": "Actively maintained, MIT license, high popularity"
+  "reason": "Активно поддерживается, лицензия MIT, высокая популярность"
 }
 """
 
 
-# --- AI Filter for Dashboard ---
-AI_FILTER_PROMPT = """\
-The user is searching for an AI solution. Transform their query into structured filters.
-Return ONLY JSON:
+# --- AI-фильтр для дашборда ---
+AI_FILTER_PROMPT = """Пользователь ищет AI-решение. Преобразуй его запрос в структурированные фильтры.
+Верни ТОЛЬКО JSON:
 
 {
   "categories": ["CV", "NLP"],
@@ -116,18 +122,40 @@ Return ONLY JSON:
   "time_range": "last_month"
 }
 
-User query: {user_query}
+Запрос пользователя: {user_query}
 """
 
 
-# --- Email Digest ---
-EMAIL_DIGEST_PROMPT = """\
-Generate a brief description for an email digest about new AI models.
-For each model: name, 1 sentence about purpose, link.
-Tone: professional, informative.
+# --- Email-дайджест ---
+EMAIL_DIGEST_PROMPT = """Сгенерируй краткое описание для email-дайджеста о новых AI-моделях.
+Для каждой модели: название, 1 предложение о назначении, ссылка.
+Тон: профессиональный, информативный.
 
-Models:
+Модели:
 {models_list}
 
-Email subject: New AI models for {period}
+Тема письма: Новые AI-модели за {period}
+"""
+
+
+# --- Полное обогащение метаданных ---
+ENRICH_PROMPT = """Обогати метаданные AI-модели структурированной информацией.
+
+Название: {title}
+Описание: {description}
+Теги: {tags}
+
+Верни ТОЛЬКО JSON:
+{
+  "category": "CV|NLP|Audio|Multimodal|RL|Graph|Generative|Other",
+  "subcategories": ["..."],
+  "tech_stack": ["PyTorch", "TensorFlow", "..."],
+  "use_cases": ["..."],
+  "language_confirmed": ["en", "ru", "..."],
+  "model_size": "small|medium|large|unknown",
+  "relevance_score": 0.0-1.0,
+  "benchmarks": {"dataset": score, ...},
+  "summary_en": "...",
+  "summary_ru": "..."
+}
 """
