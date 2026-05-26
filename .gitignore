@@ -152,6 +152,7 @@ activemq-data/
 .env
 .envrc
 .venv
+.gigacode
 env/
 venv/
 ENV/

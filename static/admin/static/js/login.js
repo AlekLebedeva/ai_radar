@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (response.ok) {
-                window.location.href = '/admin';
+                window.location.href = '/admin/';
             } else {
                 const data = await response.json().catch(() => ({}));
                 errorMsg.textContent = data.error || 'Неверный логин или пароль';

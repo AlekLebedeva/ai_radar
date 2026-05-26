@@ -6,10 +6,12 @@ AI Radar — Main Application Entry Point
 import uvicorn
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, FileResponse, HTMLResponse
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.openapi.utils import get_openapi
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from admin.router import router as admin_router
@@ -155,6 +157,18 @@ app.include_router(admin_router)
 @app.get("/")
 async def root():
     return RedirectResponse(url="/app", status_code=302)
+
+
+@app.get("/docs", include_in_schema=False)
+async def get_documentation(request: Request, _=Depends(verify_session)):
+    """Защищенный доступ к документации Swagger UI."""
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="AI Radar API")
+
+
+@app.get("/openapi.json", include_in_schema=False)
+async def openapi(request: Request, _=Depends(verify_session)):
+    """Защищенный доступ к OpenAPI спецификации."""
+    return get_openapi(title=app.title, version=app.version, routes=app.routes)
 
 
 @app.get("/health")
