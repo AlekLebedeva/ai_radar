@@ -23,6 +23,7 @@ class BaseParser(ABC):
         date_to: datetime,
         filters: Optional[Dict[str, Any]] = None,
         max_items: int = 1000,
+        task_id: Optional[UUID] = None,
     ) -> List[Dict[str, Any]]:
         """Fetch raw data from source. Returns list of raw item dicts."""
         pass

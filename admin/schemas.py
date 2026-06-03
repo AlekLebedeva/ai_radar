@@ -38,6 +38,22 @@ class TaskCreate(BaseModel):
     max_items: Optional[int] = 1000
 
 
+class HuggingFaceTaskCreate(BaseModel):
+    date_from: datetime
+    date_to: datetime
+    filters: Optional[Dict[str, Any]] = None
+    max_items: Optional[int] = 1000
+
+
+class RedditTaskCreate(BaseModel):
+    date_from: datetime
+    date_to: datetime
+    filters: Dict[str, Any] = Field(
+        default_factory=lambda: {"subreddit": "MachineLearning", "sort": "hot"}
+    )
+    max_items: Optional[int] = 100
+
+
 class TaskOut(BaseModel):
     id: UUID
     parser_name: str
@@ -48,6 +64,8 @@ class TaskOut(BaseModel):
     items_new: int
     started_at: Optional[datetime]
     finished_at: Optional[datetime]
+    created_at: datetime
+    max_items: Optional[int]
     error_log: Optional[str]
     retry_count: int
     triggered_by: str

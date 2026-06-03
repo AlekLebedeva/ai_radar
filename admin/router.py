@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.session import get_db
 from admin.schemas import (
-    SourceCreate, SourceOut, TaskCreate, TaskOut, TaskRetry,
-    LogOut, LogFilter, StatsOut, PipelineStatus
+    SourceCreate, SourceOut, TaskCreate, HuggingFaceTaskCreate, TaskOut, TaskRetry,
+    LogOut, LogFilter, StatsOut, PipelineStatus, RedditTaskCreate
 )
 from admin.service import SourceService, TaskService, LogService, StatsService, PipelineService
 from parsers.engine import ParserEngine
@@ -108,21 +108,66 @@ async def list_tasks(limit: int = 100, db: AsyncSession = Depends(get_db), admin
     return await svc.list(limit)
 
 
-@router.get("/tasks/{task_id}", response_model=TaskOut)
-async def get_task(task_id: UUID, db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
-    svc = TaskService(db)
-    task = await svc.get(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return task
-
-
 @router.post("/tasks", response_model=TaskOut)
 async def create_task(data: TaskCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
     svc = TaskService(db)
     task = await svc.create(data, triggered_by="admin")
     engine = ParserEngine(db)
     background_tasks.add_task(engine.run_task, task.id)
+    return task
+
+
+@router.post("/tasks/huggingface", response_model=TaskOut)
+async def create_huggingface_task(data: HuggingFaceTaskCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
+    svc = TaskService(db)
+    task_data = TaskCreate(
+        parser_name="huggingface",
+        date_from=data.date_from,
+        date_to=data.date_to,
+        filters=data.filters,
+        max_items=data.max_items,
+    )
+    task = await svc.create(task_data, triggered_by="admin")
+    engine = ParserEngine(db)
+    background_tasks.add_task(engine.run_task, task.id)
+    return task
+
+
+@router.post("/tasks/reddit", response_model=TaskOut)
+async def create_reddit_task(data: RedditTaskCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
+    svc = TaskService(db)
+    task_data = TaskCreate(
+        parser_name="reddit",
+        date_from=data.date_from,
+        date_to=data.date_to,
+        filters=data.filters,
+        max_items=data.max_items,
+    )
+    task = await svc.create(task_data, triggered_by="admin")
+    engine = ParserEngine(db)
+    background_tasks.add_task(engine.run_task, task.id)
+    return task
+
+
+@router.get("/tasks/huggingface/active", response_model=List[TaskOut])
+async def list_running_huggingface_tasks(db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
+    svc = TaskService(db)
+    tasks = await svc.list_by_parser("huggingface", limit=50)
+    return [task for task in tasks if task.status == "running"]
+
+
+@router.get("/tasks/active", response_model=List[TaskOut])
+async def list_running_tasks(db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
+    svc = TaskService(db)
+    return await svc.list_running()
+
+
+@router.get("/tasks/{task_id}", response_model=TaskOut)
+async def get_task(task_id: UUID, db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
+    svc = TaskService(db)
+    task = await svc.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
     return task
 
 
