@@ -15,16 +15,23 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from admin.router import router as admin_router
 from admin.auth import verify_session, ADMIN_COOKIE
 from database.base import Base
-from database.session import get_engine_for_lifespan, is_postgres
+from database.session import init_engine_for_app, is_postgres
+from database.bootstrap import seed_default_sources
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup: create tables; Shutdown: dispose engine."""
-    engine = get_engine_for_lifespan()
+    engine = await init_engine_for_app()
     if is_postgres():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+
+        session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        async with session_factory() as session:
+            await seed_default_sources(session)
+
     yield
     await engine.dispose()
 
@@ -33,7 +40,7 @@ app = FastAPI(
     title="AI Radar",
     description="Automated AI innovation monitoring system",
     version="1.0.0",
-    #lifespan=lifespan,  # ← РАСКОММЕНТИРОВАН
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -91,7 +98,7 @@ async def admin_login_page():
 
 @app.get("/admin", response_class=FileResponse)
 async def admin_page(request: Request):
-    try:
+    try:    
         verify_session(request)
     except Exception:
         return RedirectResponse(url="/admin/login", status_code=303)
