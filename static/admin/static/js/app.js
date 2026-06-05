@@ -50,6 +50,7 @@ function switchPage(page) {
         logs: 'Логи',
         sources: 'Источники',
         dbstats: 'База данных',
+        grafana: 'Grafana',
     };
     document.getElementById('page-title').textContent = titles[page] || page;
 
@@ -80,6 +81,8 @@ function loadPage(page) {
             break;
         case 'dbstats':
             loadDbStats();
+            break;
+        case 'grafana':
             break;
     }
 }

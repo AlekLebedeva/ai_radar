@@ -1,0 +1,422 @@
+{
+  "uid": "ai-radar-overview",
+  "title": "AI Radar Overview",
+  "tags": ["ai-radar", "collectors"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "period",
+        "type": "custom",
+        "label": "Период",
+        "query": "Неделя : week,Месяц : month,Всё время : all",
+        "current": {
+          "text": "Месяц",
+          "value": "month"
+        },
+        "options": [
+          {
+            "text": "Неделя",
+            "value": "week",
+            "selected": false
+          },
+          {
+            "text": "Месяц",
+            "value": "month",
+            "selected": true
+          },
+          {
+            "text": "Всё время",
+            "value": "all",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "source",
+        "type": "query",
+        "label": "Источник",
+        "datasource": {
+          "type": "postgres",
+          "uid": "ai_radar_postgres"
+        },
+        "query": "SELECT 'Все источники' AS __text, 'all' AS __value UNION ALL SELECT name AS __text, code AS __value FROM sources ORDER BY 1;",
+        "refresh": 1,
+        "current": {
+          "text": "Все источники",
+          "value": "all"
+        },
+        "includeAll": false
+      },
+      {
+        "name": "ai_filter",
+        "type": "custom",
+        "label": "AI-фильтр",
+        "query": "Все данные : all,AI only (заглушка) : ai",
+        "current": {
+          "text": "Все данные",
+          "value": "all"
+        },
+        "options": [
+          {
+            "text": "Все данные",
+            "value": "all",
+            "selected": true
+          },
+          {
+            "text": "AI only (заглушка)",
+            "value": "ai",
+            "selected": false
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Всего спарсено",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "ai_radar_postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) AS total\nFROM raw_items ri\nJOIN sources s ON s.id = ri.source_id\nWHERE (\n  '${period}' = 'all'\n  OR ('${period}' = 'week' AND ri.collected_at >= NOW() - INTERVAL '7 days')\n  OR ('${period}' = 'month' AND ri.collected_at >= NOW() - INTERVAL '30 days')\n)\nAND ('${source}' = 'all' OR s.code = '${source}')\nAND ('${ai_filter}' IN ('all', 'ai'));"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Источников",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "ai_radar_postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COUNT(DISTINCT s.code) AS sources_count\nFROM raw_items ri\nJOIN sources s ON s.id = ri.source_id\nWHERE (\n  '${period}' = 'all'\n  OR ('${period}' = 'week' AND ri.collected_at >= NOW() - INTERVAL '7 days')\n  OR ('${period}' = 'month' AND ri.collected_at >= NOW() - INTERVAL '30 days')\n)\nAND ('${source}' = 'all' OR s.code = '${source}')\nAND ('${ai_filter}' IN ('all', 'ai'));"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Успешных задач",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "ai_radar_postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) AS completed_tasks\nFROM parser_tasks pt\nWHERE pt.status = 'completed'\nAND (\n  '${period}' = 'all'\n  OR ('${period}' = 'week' AND pt.created_at >= NOW() - INTERVAL '7 days')\n  OR ('${period}' = 'month' AND pt.created_at >= NOW() - INTERVAL '30 days')\n)\nAND ('${source}' = 'all' OR pt.parser_name = '${source}');"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "AI-фильтр",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "ai_radar_postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT CASE WHEN '${ai_filter}' = 'ai' THEN 'Заглушка: AI only' ELSE 'Все данные' END AS mode;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Сбор данных по дням",
+      "gridPos": {
+        "h": 9,
+        "w": 14,
+        "x": 0,
+        "y": 5
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "ai_radar_postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT\n  date_trunc('day', ri.collected_at) AS time,\n  s.name AS metric,\n  COUNT(*) AS value\nFROM raw_items ri\nJOIN sources s ON s.id = ri.source_id\nWHERE (\n  '${period}' = 'all'\n  OR ('${period}' = 'week' AND ri.collected_at >= NOW() - INTERVAL '7 days')\n  OR ('${period}' = 'month' AND ri.collected_at >= NOW() - INTERVAL '30 days')\n)\nAND ('${source}' = 'all' OR s.code = '${source}')\nAND ('${ai_filter}' IN ('all', 'ai'))\nGROUP BY 1, 2\nORDER BY 1;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "barAlignment": 0,
+            "lineWidth": 2,
+            "fillOpacity": 18,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull", "sum"]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "barchart",
+      "title": "Количество данных по источникам",
+      "gridPos": {
+        "h": 9,
+        "w": 10,
+        "x": 14,
+        "y": 5
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "ai_radar_postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT\n  s.name AS source,\n  COUNT(*) AS items\nFROM raw_items ri\nJOIN sources s ON s.id = ri.source_id\nWHERE (\n  '${period}' = 'all'\n  OR ('${period}' = 'week' AND ri.collected_at >= NOW() - INTERVAL '7 days')\n  OR ('${period}' = 'month' AND ri.collected_at >= NOW() - INTERVAL '30 days')\n)\nAND ('${source}' = 'all' OR s.code = '${source}')\nAND ('${ai_filter}' IN ('all', 'ai'))\nGROUP BY s.name\nORDER BY items DESC;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Спарсенные данные",
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "ai_radar_postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT\n  ri.collected_at AS collected_at,\n  s.name AS source,\n  ri.title,\n  ri.author,\n  ri.popularity_metric,\n  ri.status,\n  ri.url,\n  ri.tags,\n  ri.task_type\nFROM raw_items ri\nJOIN sources s ON s.id = ri.source_id\nWHERE (\n  '${period}' = 'all'\n  OR ('${period}' = 'week' AND ri.collected_at >= NOW() - INTERVAL '7 days')\n  OR ('${period}' = 'month' AND ri.collected_at >= NOW() - INTERVAL '30 days')\n)\nAND ('${source}' = 'all' OR s.code = '${source}')\nAND ('${ai_filter}' IN ('all', 'ai'))\nORDER BY ri.collected_at DESC\nLIMIT 200;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "url"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Открыть",
+                    "url": "${__value.raw}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": ["sum"],
+          "countRows": false
+        }
+      }
+    }
+  ]
+}
