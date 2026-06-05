@@ -218,3 +218,24 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project: AI Radar runtime data
+postgres-data/
+data/*.db
+data/*.db-*
+data/*.sqlite
+data/*.sqlite3
+*.log
+logs/
+
+# Local secrets
+.env.*
+!.env.example
+
+# Docker/local override files
+docker-compose.override.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini

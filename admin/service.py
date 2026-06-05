@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from uuid import UUID, uuid4
 
@@ -12,6 +12,12 @@ from admin.schemas import (
     SourceCreate, SourceOut, TaskCreate, TaskOut, LogOut,
     TableStat, StatsOut, PipelineNode, PipelineEdge, PipelineStatus
 )
+
+
+def _utc_naive(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
 
 
 class SourceService:
@@ -63,6 +69,24 @@ class TaskService:
         )
         return [TaskOut.model_validate(t) for t in result.scalars().all()]
 
+    async def list_by_parser(self, parser_name: str, limit: int = 50) -> List[TaskOut]:
+        result = await self.db.execute(
+            select(ParserTask)
+            .where(ParserTask.parser_name == parser_name)
+            .order_by(desc(ParserTask.created_at))
+            .limit(limit)
+        )
+        return [TaskOut.model_validate(t) for t in result.scalars().all()]
+
+    async def list_running(self, limit: int = 50) -> List[TaskOut]:
+        result = await self.db.execute(
+            select(ParserTask)
+            .where(ParserTask.status == "running")
+            .order_by(desc(ParserTask.created_at))
+            .limit(limit)
+        )
+        return [TaskOut.model_validate(t) for t in result.scalars().all()]
+
     async def get(self, task_id: UUID) -> Optional[TaskOut]:
         result = await self.db.execute(select(ParserTask).where(ParserTask.id == task_id))
         task = result.scalar_one_or_none()
@@ -73,9 +97,10 @@ class TaskService:
             id=uuid4(),
             parser_name=data.parser_name,
             status="pending",
-            date_from=data.date_from,
-            date_to=data.date_to,
+            date_from=_utc_naive(data.date_from),
+            date_to=_utc_naive(data.date_to),
             filters=data.filters,
+            max_items=data.max_items,
             triggered_by=triggered_by,
         )
         self.db.add(task)
@@ -300,16 +325,13 @@ class PipelineService:
             )
         )
 
-        # Edges
-        edges = [
-            PipelineEdge(from_node="source_huggingface", to_node="collect"),
-            PipelineEdge(from_node="source_github", to_node="collect"),
-            PipelineEdge(from_node="source_arxiv", to_node="collect"),
-            PipelineEdge(from_node="source_pypi", to_node="collect"),
-            PipelineEdge(from_node="source_web", to_node="collect"),
-            PipelineEdge(from_node="collect", to_node="dedup"),
-            PipelineEdge(from_node="dedup", to_node="llm"),
-            PipelineEdge(from_node="llm", to_node="vector"),
-        ]
+        edges = [PipelineEdge(from_node=f"source_{src.code}", to_node="collect") for src in sources]
+        edges.extend(
+            [
+                PipelineEdge(from_node="collect", to_node="dedup"),
+                PipelineEdge(from_node="dedup", to_node="llm"),
+                PipelineEdge(from_node="llm", to_node="vector"),
+            ]
+        )
 
         return PipelineStatus(nodes=nodes, edges=edges)

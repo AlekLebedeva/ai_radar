@@ -60,6 +60,10 @@
                     <span class="nav-icon">&#128452;</span>
                     <span class="nav-label">База данных</span>
                 </a>
+                <a href="#" class="nav-item" data-page="grafana">
+                    <span class="nav-icon">&#128200;</span>
+                    <span class="nav-label">Grafana</span>
+                </a>
             </nav>
             <div class="sidebar-footer">
                 <div class="version">v1.0.0 MVP</div>
@@ -179,10 +183,10 @@
                                     <select class="form-control" id="task-parser" required>
                                         <option value="">Выберите...</option>
                                         <option value="huggingface">HuggingFace</option>
+                                        <option value="reddit">Reddit</option>
                                         <option value="github">GitHub</option>
                                         <option value="arxiv">arXiv</option>
                                         <option value="pypi">PyPI</option>
-                                        <option value="web">Web/Reddit</option>
                                     </select>
                                 </div>
                                 <div class="form-row">
@@ -220,10 +224,10 @@
                         <select class="filter-select" id="filter-log-parser">
                             <option value="">Все парсеры</option>
                             <option value="huggingface">HuggingFace</option>
+                            <option value="reddit">Reddit</option>
                             <option value="github">GitHub</option>
                             <option value="arxiv">arXiv</option>
                             <option value="pypi">PyPI</option>
-                            <option value="web">Web</option>
                         </select>
                         <select class="filter-select" id="filter-log-status">
                             <option value="">Все статусы</option>
@@ -266,6 +270,20 @@
                             <tbody></tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+
+            <div class="page" id="page-grafana">
+                <div class="panel grafana-panel">
+                    <div class="panel-header">
+                        <h3>Grafana Dashboard</h3>
+                        <a class="btn btn-secondary" href="http://localhost:3000/d/ai-radar-overview/ai-radar-overview?orgId=1&kiosk" target="_blank" rel="noreferrer">Open Grafana</a>
+                    </div>
+                    <iframe
+                        class="grafana-frame"
+                        title="AI Radar Grafana Dashboard"
+                        src="http://localhost:3000/d/ai-radar-overview/ai-radar-overview?orgId=1&kiosk">
+                    </iframe>
                 </div>
             </div>
         </main>

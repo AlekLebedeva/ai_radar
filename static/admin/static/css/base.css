@@ -76,3 +76,19 @@ body {
     .logo-text, .logo-sub, .nav-label { display: none; }
     .nav-item { justify-content: center; padding: 12px; }
 }
+
+.grafana-panel {
+    height: calc(100vh - var(--header-height) - 48px);
+    min-height: 640px;
+    display: flex;
+    flex-direction: column;
+}
+
+.grafana-frame {
+    flex: 1;
+    width: 100%;
+    min-height: 560px;
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--bg-primary);
+}
