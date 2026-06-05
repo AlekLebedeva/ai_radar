@@ -38,7 +38,6 @@ async function submitNewTask() {
     }
 
     const payload = {
-        parser_name: parser,
         date_from: new Date(dateFrom).toISOString(),
         date_to: new Date(dateTo).toISOString(),
         max_items: parseInt(maxItems) || 1000,
@@ -54,7 +53,7 @@ async function submitNewTask() {
     }
 
     try {
-        await api('/tasks', {
+        await api(`/tasks/${parser}/run`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),

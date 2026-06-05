@@ -325,17 +325,13 @@ class PipelineService:
             )
         )
 
-        # Edges
-        edges = [
-            PipelineEdge(from_node="source_huggingface", to_node="collect"),
-            PipelineEdge(from_node="source_reddit", to_node="collect"),
-            PipelineEdge(from_node="source_github", to_node="collect"),
-            PipelineEdge(from_node="source_arxiv", to_node="collect"),
-            PipelineEdge(from_node="source_pypi", to_node="collect"),
-            PipelineEdge(from_node="source_web", to_node="collect"),
-            PipelineEdge(from_node="collect", to_node="dedup"),
-            PipelineEdge(from_node="dedup", to_node="llm"),
-            PipelineEdge(from_node="llm", to_node="vector"),
-        ]
+        edges = [PipelineEdge(from_node=f"source_{src.code}", to_node="collect") for src in sources]
+        edges.extend(
+            [
+                PipelineEdge(from_node="collect", to_node="dedup"),
+                PipelineEdge(from_node="dedup", to_node="llm"),
+                PipelineEdge(from_node="llm", to_node="vector"),
+            ]
+        )
 
         return PipelineStatus(nodes=nodes, edges=edges)
