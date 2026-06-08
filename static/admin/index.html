@@ -3,7 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
     <title>AI Radar — Админка</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <!-- Мгновенная проверка сессии ДО загрузки ресурсов -->
+    <script>
+        (function(){
+            if(!document.cookie.includes('ai_radar_admin_session')){
+                window.location.replace('/admin/login');
+                document.write('');
+                document.close();
+                throw new Error('Unauthorized');
+            }
+        })();
+    </script>
+
     <link rel="stylesheet" href="/admin/static/css/base.css">
     <link rel="stylesheet" href="/admin/static/css/components.css">
     <link rel="stylesheet" href="/admin/static/css/modal.css">
@@ -43,6 +59,10 @@
                 <a href="#" class="nav-item" data-page="dbstats">
                     <span class="nav-icon">&#128452;</span>
                     <span class="nav-label">База данных</span>
+                </a>
+                <a href="#" class="nav-item" data-page="grafana">
+                    <span class="nav-icon">&#128200;</span>
+                    <span class="nav-label">Grafana</span>
                 </a>
             </nav>
             <div class="sidebar-footer">
@@ -163,10 +183,10 @@
                                     <select class="form-control" id="task-parser" required>
                                         <option value="">Выберите...</option>
                                         <option value="huggingface">HuggingFace</option>
+                                        <option value="reddit">Reddit</option>
                                         <option value="github">GitHub</option>
                                         <option value="arxiv">arXiv</option>
                                         <option value="pypi">PyPI</option>
-                                        <option value="web">Web/Reddit</option>
                                     </select>
                                 </div>
                                 <div class="form-row">
@@ -204,10 +224,10 @@
                         <select class="filter-select" id="filter-log-parser">
                             <option value="">Все парсеры</option>
                             <option value="huggingface">HuggingFace</option>
+                            <option value="reddit">Reddit</option>
                             <option value="github">GitHub</option>
                             <option value="arxiv">arXiv</option>
                             <option value="pypi">PyPI</option>
-                            <option value="web">Web</option>
                         </select>
                         <select class="filter-select" id="filter-log-status">
                             <option value="">Все статусы</option>
@@ -250,6 +270,20 @@
                             <tbody></tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+
+            <div class="page" id="page-grafana">
+                <div class="panel grafana-panel">
+                    <div class="panel-header">
+                        <h3>Grafana Dashboard</h3>
+                        <a class="btn btn-secondary" href="http://localhost:3000/d/ai-radar-overview/ai-radar-overview?orgId=1&kiosk" target="_blank" rel="noreferrer">Open Grafana</a>
+                    </div>
+                    <iframe
+                        class="grafana-frame"
+                        title="AI Radar Grafana Dashboard"
+                        src="http://localhost:3000/d/ai-radar-overview/ai-radar-overview?orgId=1&kiosk">
+                    </iframe>
                 </div>
             </div>
         </main>

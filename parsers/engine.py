@@ -1,4 +1,3 @@
-import asyncio
 import hashlib
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -10,153 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import Source, ParserTask, ParserLog, RawItem
 from database.session import is_postgres
 from admin.service import TaskService, LogService
-from parsers.base import BaseParser
-from parsers.adapters import HuggingFaceAdapter, RedditAdapter
-
-
-class MockHuggingFaceParser(BaseParser):
-    async def fetch(self, date_from, date_to, filters=None, max_items=1000, task_id=None):
-        await asyncio.sleep(0.5)
-        return [
-            {
-                "external_id": "microsoft/DialoGPT-medium",
-                "title": "DialoGPT Medium",
-                "model_type": "transformer",
-                "domain": ["nlp", "chatbot"],
-                "description": "Pre-trained model for conversational AI based on GPT-2.",
-                "url": "https://huggingface.co/microsoft/DialoGPT-medium",
-                "author": "Microsoft",
-                "license": "mit",
-                "tags": ["pytorch", "transformers", "nlp", "text-generation"],
-                "popularity_metric": 5234,
-                "created_at_source": "2023-08-15T10:30:00Z",
-                "updated_at_source": "2025-11-20T14:22:00Z",
-                "language": ["en"],
-                "framework": ["PyTorch", "Transformers"],
-                "task_type": ["text-generation"],
-            }
-        ]
-
-    def normalize(self, raw_item):
-        return raw_item
-
-
-class MockGitHubParser(BaseParser):
-    async def fetch(self, date_from, date_to, filters=None, max_items=1000, task_id=None):
-        await asyncio.sleep(0.5)
-        return [
-            {
-                "external_id": "openai/whisper",
-                "title": "Whisper",
-                "model_type": "transformer",
-                "domain": ["audio", "asr"],
-                "description": "Robust speech recognition via large-scale weak supervision.",
-                "url": "https://github.com/openai/whisper",
-                "author": "OpenAI",
-                "license": "mit",
-                "tags": ["python", "pytorch", "speech-recognition", "audio"],
-                "popularity_metric": 72000,
-                "created_at_source": "2022-09-15T00:00:00Z",
-                "updated_at_source": "2026-01-10T00:00:00Z",
-                "language": ["en", "zh", "ru"],
-                "framework": ["PyTorch"],
-                "task_type": ["automatic-speech-recognition"],
-            }
-        ]
-
-    def normalize(self, raw_item):
-        return raw_item
-
-
-class MockArxivParser(BaseParser):
-    async def fetch(self, date_from, date_to, filters=None, max_items=1000, task_id=None):
-        await asyncio.sleep(0.5)
-        return [
-            {
-                "external_id": "arxiv:2401.12345",
-                "title": "Efficient Vision Transformers for Edge Devices",
-                "model_type": "transformer",
-                "domain": ["cv"],
-                "description": "We propose a lightweight ViT architecture optimized for mobile deployment.",
-                "url": "https://arxiv.org/abs/2401.12345",
-                "author": "J. Smith et al.",
-                "license": "arxiv",
-                "tags": ["cv", "transformer", "edge-computing", "mobile"],
-                "popularity_metric": 45,
-                "created_at_source": "2024-01-15T00:00:00Z",
-                "updated_at_source": "2024-01-15T00:00:00Z",
-                "language": ["en"],
-                "framework": ["PyTorch"],
-                "task_type": ["image-classification"],
-            }
-        ]
-
-    def normalize(self, raw_item):
-        return raw_item
-
-
-class MockPyPIParser(BaseParser):
-    async def fetch(self, date_from, date_to, filters=None, max_items=1000, task_id=None):
-        await asyncio.sleep(0.3)
-        return [
-            {
-                "external_id": "langchain",
-                "title": "LangChain",
-                "model_type": "library",
-                "domain": ["nlp", "rag"],
-                "description": "Building applications with LLMs through composability.",
-                "url": "https://pypi.org/project/langchain",
-                "author": "LangChain AI",
-                "license": "mit",
-                "tags": ["llm", "agents", "chains", "python"],
-                "popularity_metric": 150000,
-                "created_at_source": "2022-10-01T00:00:00Z",
-                "updated_at_source": "2026-05-01T00:00:00Z",
-                "language": ["en"],
-                "framework": ["Python"],
-                "task_type": ["framework"],
-            }
-        ]
-
-    def normalize(self, raw_item):
-        return raw_item
-
-
-class MockWebParser(BaseParser):
-    async def fetch(self, date_from, date_to, filters=None, max_items=1000, task_id=None):
-        await asyncio.sleep(0.3)
-        return [
-            {
-                "external_id": "reddit_post_abc123",
-                "title": "New Diffusion Model for 3D Generation",
-                "model_type": "diffusion",
-                "domain": ["cv", "generative"],
-                "description": "Discussion of a new diffusion model capable of generating 3D assets from text.",
-                "url": "https://reddit.com/r/MachineLearning/comments/abc123",
-                "author": "u/ml_researcher",
-                "license": None,
-                "tags": ["diffusion", "3d-generation", "text-to-3d"],
-                "popularity_metric": 1200,
-                "created_at_source": "2026-05-10T00:00:00Z",
-                "updated_at_source": "2026-05-10T00:00:00Z",
-                "language": ["en"],
-                "framework": [],
-                "task_type": ["3d-generation"],
-            }
-        ]
-
-    def normalize(self, raw_item):
-        return raw_item
-
-
-PARSER_REGISTRY = {
-    "huggingface": HuggingFaceAdapter(),
-    "reddit": RedditAdapter(),
-    "github": MockGitHubParser("github", "GitHub", "https://api.github.com"),
-    "arxiv": MockArxivParser("arxiv", "arXiv", "http://export.arxiv.org/api"),
-    "pypi": MockPyPIParser("pypi", "PyPI", "https://pypi.org/pypi"),
-    "web": MockWebParser("web", "Web/Reddit", ""),
-}
+from parsers.registry import PARSER_REGISTRY, get_parser
 
 
 def _json_safe(value: Any) -> Any:
@@ -217,7 +70,7 @@ class ParserEngine:
         if not task:
             return
 
-        parser = PARSER_REGISTRY.get(task.parser_name)
+        parser = get_parser(task.parser_name)
         if not parser:
             await self.task_svc.update_status(task_id, "failed", error=f"Unknown parser: {task.parser_name}")
             return

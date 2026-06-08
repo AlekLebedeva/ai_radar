@@ -10,12 +10,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database.session import get_db
 from admin.schemas import (
     SourceCreate, SourceOut, TaskCreate, HuggingFaceTaskCreate, TaskOut, TaskRetry,
-    LogOut, LogFilter, StatsOut, PipelineStatus, RedditTaskCreate
+    LogOut, LogFilter, StatsOut, PipelineStatus, RedditTaskCreate, ParserRunCreate
 )
 from admin.service import SourceService, TaskService, LogService, StatsService, PipelineService
 from parsers.engine import ParserEngine
+from parsers.registry import get_parser_spec
 from admin.auth import get_current_admin, create_session, destroy_session, _verify, _hash, ADMIN_COOKIE, SESSION_TTL
+
+from llm.processor import LLMProcessor
+from llm.client import LLMClient
+
 from config import get_settings
+
 
 settings = get_settings()
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
@@ -110,6 +116,12 @@ async def list_tasks(limit: int = 100, db: AsyncSession = Depends(get_db), admin
 
 @router.post("/tasks", response_model=TaskOut)
 async def create_task(data: TaskCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
+    spec = get_parser_spec(data.parser_name)
+    if spec is None:
+        raise HTTPException(status_code=404, detail=f"Unknown parser: {data.parser_name}")
+    if not spec.implemented:
+        raise HTTPException(status_code=501, detail=f"Parser is registered but not implemented yet: {data.parser_name}")
+
     svc = TaskService(db)
     task = await svc.create(data, triggered_by="admin")
     engine = ParserEngine(db)
@@ -149,10 +161,43 @@ async def create_reddit_task(data: RedditTaskCreate, background_tasks: Backgroun
     return task
 
 
+@router.post("/tasks/{parser_name}/run", response_model=TaskOut)
+async def create_parser_task(parser_name: str, data: ParserRunCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
+    spec = get_parser_spec(parser_name)
+    if spec is None:
+        raise HTTPException(status_code=404, detail=f"Unknown parser: {parser_name}")
+    if not spec.implemented:
+        raise HTTPException(status_code=501, detail=f"Parser is registered but not implemented yet: {parser_name}")
+
+    svc = TaskService(db)
+    task_data = TaskCreate(
+        parser_name=parser_name,
+        date_from=data.date_from,
+        date_to=data.date_to,
+        filters=data.filters,
+        max_items=data.max_items,
+    )
+    task = await svc.create(task_data, triggered_by="admin")
+    engine = ParserEngine(db)
+    background_tasks.add_task(engine.run_task, task.id)
+    return task
+
+
 @router.get("/tasks/huggingface/active", response_model=List[TaskOut])
 async def list_running_huggingface_tasks(db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
     svc = TaskService(db)
     tasks = await svc.list_by_parser("huggingface", limit=50)
+    return [task for task in tasks if task.status == "running"]
+
+
+@router.get("/tasks/{parser_name}/active", response_model=List[TaskOut])
+async def list_running_parser_tasks(parser_name: str, db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
+    spec = get_parser_spec(parser_name)
+    if spec is None:
+        raise HTTPException(status_code=404, detail=f"Unknown parser: {parser_name}")
+
+    svc = TaskService(db)
+    tasks = await svc.list_by_parser(parser_name, limit=50)
     return [task for task in tasks if task.status == "running"]
 
 
@@ -209,3 +254,38 @@ async def get_stats(db: AsyncSession = Depends(get_db), admin: str = Depends(get
 async def get_pipeline(db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
     svc = PipelineService(db)
     return await svc.get_status()
+
+
+# ─── LLM Processing ───
+@router.post("/llm/enrich/{raw_item_id}")
+async def enrich_item(
+    raw_item_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    admin: str = Depends(get_current_admin),
+):
+    processor = LLMProcessor(db)
+    result = await processor.process_item(raw_item_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Item not found or already processed")
+    return {"status": "completed", "enriched_id": str(result.id)}
+
+
+@router.post("/llm/enrich-batch")
+async def enrich_batch(
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
+    admin: str = Depends(get_current_admin),
+):
+    processor = LLMProcessor(db)
+    count = await processor.process_pending(limit)
+    return {"processed": count}
+
+
+@router.get("/llm/status")
+async def llm_status(admin: str = Depends(get_current_admin)):
+    client = LLMClient()
+    return {
+        "model": client.model,
+        "base_url": client.base_url,
+        "api_key_configured": bool(client.api_key),
+    }
