@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.responses import RedirectResponse, FileResponse, HTMLResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -24,8 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: create tables; Shutdown: dispose engine."""
-    engine = await init_engine_for_app()
+    engine = get_engine_for_lifespan()
     if is_postgres():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -42,7 +41,7 @@ app = FastAPI(
     title="AI Radar",
     description="Automated AI innovation monitoring system",
     version="1.0.0",
-    lifespan=lifespan,
+    #lifespan=lifespan,
 )
 
 app.add_middleware(
