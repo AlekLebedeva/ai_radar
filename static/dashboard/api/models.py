@@ -1,8 +1,8 @@
 from typing import Optional, Dict, Any
 from datetime import datetime
 from fastapi import APIRouter, Query, Depends
-from app.models.schemas import ModelCard, ModelDetail
-from app.dependencies import get_data_provider
+from static.dashboard.models.schemas import ModelCard, ModelDetail
+from static.dashboard.dependencies import get_data_provider
 
 router = APIRouter(prefix="/api", tags=["models"])
 

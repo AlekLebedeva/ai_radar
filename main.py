@@ -16,6 +16,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from admin.router import router as admin_router
 from admin.auth import verify_session
+from static.dashboard.main import app as dashboard_app
 from database.base import Base
 from database.session import init_engine_for_app, is_postgres
 from database.bootstrap import seed_default_sources
@@ -24,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    engine = get_engine_for_lifespan()
+    engine = await init_engine_for_app()
     if is_postgres():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -41,7 +42,7 @@ app = FastAPI(
     title="AI Radar",
     description="Automated AI innovation monitoring system",
     version="1.0.0",
-    #lifespan=lifespan,
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -59,12 +60,13 @@ app.add_middleware(
 # ═══════════════════════════════════════════════════════
 class AdminAuthMiddleware(BaseHTTPMiddleware):
     PUBLIC_PATHS = {"/admin/login", "/admin/login.html", "/admin/static/"}
+    PROTECTED_PREFIXES = ("/admin",)
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
 
         # Не /admin — пропускаем
-        if not path.startswith("/admin"):
+        if not path.startswith(self.PROTECTED_PREFIXES):
             return await call_next(request)
 
         # Публичные пути — пропускаем
@@ -96,6 +98,7 @@ app.add_middleware(AdminAuthMiddleware)
 #  Static files — после middleware!
 # ═══════════════════════════════════════════════════════
 app.mount("/app/static", StaticFiles(directory="static/app/static"), name="app_static")
+app.mount("/dashboard", dashboard_app, name="dashboard")
 
 # Admin static — через кастомный handler с проверкой
 class ProtectedStaticFiles(StaticFiles):

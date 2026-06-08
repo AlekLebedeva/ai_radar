@@ -9,17 +9,6 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
     <!-- Мгновенная проверка сессии ДО загрузки ресурсов -->
-    <script>
-        (function(){
-            if(!document.cookie.includes('ai_radar_admin_session')){
-                window.location.replace('/admin/login');
-                document.write('');
-                document.close();
-                throw new Error('Unauthorized');
-            }
-        })();
-    </script>
-
     <link rel="stylesheet" href="/admin/static/css/base.css">
     <link rel="stylesheet" href="/admin/static/css/components.css">
     <link rel="stylesheet" href="/admin/static/css/modal.css">
@@ -286,6 +275,7 @@
                     </iframe>
                 </div>
             </div>
+
         </main>
     </div>
     <div class="toast-container" id="toast-container"></div>
