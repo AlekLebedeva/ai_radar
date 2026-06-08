@@ -21,7 +21,9 @@ class SourceOut(BaseModel):
     name: str
     code: str
     api_base_url: Optional[str]
+    api_doc_url: Optional[str]
     auth_type: Optional[str]
+    rate_limit: Optional[Dict[str, Any]]
     is_active: bool
     created_at: datetime
 
@@ -52,6 +54,13 @@ class RedditTaskCreate(BaseModel):
         default_factory=lambda: {"subreddit": "MachineLearning", "sort": "hot"}
     )
     max_items: Optional[int] = 100
+
+
+class ParserRunCreate(BaseModel):
+    date_from: datetime
+    date_to: datetime
+    filters: Optional[Dict[str, Any]] = None
+    max_items: Optional[int] = 1000
 
 
 class TaskOut(BaseModel):
