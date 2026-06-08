@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .card-hover:hover { transform: translateY(-2px); transition: all 0.2s; }
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        /* Простые стили для статистики вместо Recharts */
+        .stat-bar {
+            height: 8px;
+            background-color: #3b82f6;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+        .stat-item {
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Компонент для отображения статистики простыми полосками
+        const StatsPanel = ({ stats, period, setPeriod }) => {
+            const categoryData = Object.entries(stats.by_category || {}).map(([name, value]) => ({ name, value }));
+            const sourceData = Object.entries(stats.by_source || {}).map(([name, value]) => ({ name, value }));
+            const maxCategory = Math.max(...categoryData.map(d => d.value), 1);
+            const maxSource = Math.max(...sourceData.map(d => d.value), 1);
+            
+            return (
+                <div className="bg-white p-4 rounded shadow col-span-2">
+                    <h2 className="text-xl font-semibold mb-2">Статистика</h2>
+                    <div className="flex gap-4 mb-4">
+                        <button onClick={() => setPeriod('week')} className={`px-3 py-1 rounded ${period === 'week' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Неделя</button>
+                        <button onClick={() => setPeriod('month')} className={`px-3 py-1 rounded ${period === 'month' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Месяц</button>
+                        <button onClick={() => setPeriod('all_time')} className={`px-3 py-1 rounded ${period === 'all_time' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Всё время</button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 className="font-medium mb-2">По категориям</h3>
+                            {categoryData.length === 0 && <p className="text-gray-500">Нет данных</p>}
+                            {categoryData.map(item => (
+                                <div key={item.name} className="stat-item">
+                                    <div className="flex justify-between text-sm">
+                                        <span>{item.name}</span>
+                                        <span>{item.value}</span>
+                                    </div>
+                                    <div className="stat-bar" style={{ width: `${(item.value / maxCategory) * 100}%` }}></div>
+                                </div>
+                            ))}
+                        </div>
+                        <div>
+                            <h3 className="font-medium mb-2">По источникам</h3>
+                            {sourceData.length === 0 && <p className="text-gray-500">Нет данных</p>}
+                            {sourceData.map(item => (
+                                <div key={item.name} className="stat-item">
+                                    <div className="flex justify-between text-sm">
+                                        <span>{item.name}</span>
+                                        <span>{item.value}</span>
+                                    </div>
+                                    <div className="stat-bar" style={{ width: `${(item.value / maxSource) * 100}%` }}></div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Компонент детальной страницы
+        const ModelDetail = ({ modelId, onClose }) => {
+            const [model, setModel] = useState(null);
+            const [loading, setLoading] = useState(true);
+            
+            useEffect(() => {
+                if (modelId) {
+                    axios.get(`/api/models/${modelId}`).then(res => {
+                        setModel(res.data);
+                        setLoading(false);
+                    }).catch(err => {
+                        console.error(err);
+                        setLoading(false);
+                    });
+                }
+            }, [modelId]);
+            
+            const copyLink = () => {
+                navigator.clipboard.writeText(window.location.href);
+                alert('Ссылка скопирована');
+            };
+            
+            const exportSingleCSV = () => {
+                if (!model) return;
+                const data = [model.raw];
+                const headers = Object.keys(data[0]).join(",");
+                const values = Object.values(data[0]).join(",");
+                const csvContent = "data:text/csv;charset=utf-8," + headers + "\\n" + values;
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `${modelId}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+            
+            const handleSimilar = () => {
+                alert("Похожие модели (заглушка)");
+            };
+            
+            if (loading) return <div className="p-8">Загрузка...</div>;
+            if (!model) return <div className="p-8">Модель не найдена</div>;
+            
+            return (
+                <div className="container mx-auto p-4">
+                    <button onClick={onClose} className="mb-4 text-blue-500 underline">← Назад к дашборду</button>
+                    <div className="bg-white rounded shadow p-6">
+                        <h1 className="text-2xl font-bold mb-4">{model.raw.title || 'Без названия'}</h1>
+                        <div className="flex gap-4 mb-4">
+                            <button onClick={copyLink} className="bg-gray-500 text-white px-3 py-1 rounded">Копировать ссылку</button>
+                            <button onClick={exportSingleCSV} className="bg-green-500 text-white px-3 py-1 rounded">Экспорт в CSV</button>
+                            <button onClick={handleSimilar} className="bg-blue-500 text-white px-3 py-1 rounded">Похожие</button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h2 className="text-xl font-semibold">Raw данные</h2>
+                                <pre className="bg-gray-100 p-4 rounded overflow-auto text-sm">{JSON.stringify(model.raw, null, 2)}</pre>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-semibold">Enriched данные</h2>
+                                <pre className="bg-gray-100 p-4 rounded overflow-auto text-sm">{JSON.stringify(model.enriched, null, 2)}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        // Основной дашборд
+        const Dashboard = () => {
+            const [models, setModels] = useState([]);
+            const [total, setTotal] = useState(0);
+            const [page, setPage] = useState(1);
+            const [filters, setFilters] = useState({ category: '', license: '', date_from: '', date_to: '', min_popularity: '' });
+            const [sortBy, setSortBy] = useState('date');
+            const [sources, setSources] = useState([]);
+            const [stats, setStats] = useState({ by_category: {}, by_source: {} });
+            const [statsPeriod, setStatsPeriod] = useState('all_time');
+            const [aiQuery, setAiQuery] = useState('');
+            const [selectedModelId, setSelectedModelId] = useState(null);
+            
+            const fetchModels = async () => {
+                const params = new URLSearchParams({
+                    page, limit: 12, sort_by: sortBy,
+                    ...(filters.category && { category: filters.category }),
+                    ...(filters.license && { license: filters.license }),
+                    ...(filters.date_from && { date_from: filters.date_from }),
+                    ...(filters.date_to && { date_to: filters.date_to }),
+                    ...(filters.min_popularity && { min_popularity: filters.min_popularity })
+                });
+                const res = await axios.get(`/api/models?${params}`);
+                setModels(res.data.items);
+                setTotal(res.data.total);
+            };
+            
+            const fetchSources = async () => {
+                const res = await axios.get('/api/sources');
+                setSources(res.data);
+            };
+            
+            const fetchStats = async () => {
+                const res = await axios.get(`/api/stats?period=${statsPeriod}`);
+                setStats(res.data);
+            };
+            
+            useEffect(() => {
+                fetchModels();
+            }, [page, filters, sortBy]);
+            
+            useEffect(() => {
+                fetchSources();
+                fetchStats();
+            }, []);
+            
+            useEffect(() => {
+                fetchStats();
+            }, [statsPeriod]);
+            
+            const handleFilterChange = (e) => {
+                setFilters({ ...filters, [e.target.name]: e.target.value });
+                setPage(1);
+            };
+            
+            const handleSortChange = (e) => {
+                setSortBy(e.target.value);
+                setPage(1);
+            };
+            
+            const handleAIFilter = async () => {
+                if (!aiQuery) return;
+                await axios.post('/api/ai-filter', { query: aiQuery });
+                alert(`AI-фильтр пока заглушка. Запрос: "${aiQuery}"`);
+            };
+            
+            const handleVectorSearch = async (modelId) => {
+                await axios.post('/api/vector-search', { model_id: modelId });
+                alert(`Векторный поиск заглушка для модели ${modelId}`);
+            };
+            
+            const exportCSV = () => {
+                const params = new URLSearchParams();
+                if (filters.category) params.append('category', filters.category);
+                if (filters.license) params.append('license', filters.license);
+                if (filters.date_from) params.append('date_from', filters.date_from);
+                if (filters.date_to) params.append('date_to', filters.date_to);
+                if (filters.min_popularity) params.append('min_popularity', filters.min_popularity);
+                const url = `/api/export_csv?${params.toString()}`;
+                window.location.href = url;
+            };
+            const exportXLSX = () => {
+                const params = new URLSearchParams();
+                if (filters.category) params.append('category', filters.category);
+                if (filters.license) params.append('license', filters.license);
+                if (filters.date_from) params.append('date_from', filters.date_from);
+                if (filters.date_to) params.append('date_to', filters.date_to);
+                if (filters.min_popularity) params.append('min_popularity', filters.min_popularity);
+                window.location.href = `/api/export_xlsx?${params.toString()}`;
+            };
+            // Если выбран ID модели – показываем детальную страницу
+            if (selectedModelId) {
+                return <ModelDetail modelId={selectedModelId} onClose={() => setSelectedModelId(null)} />;
+            }
+            
+            return (
+                <div className="container mx-auto p-4">
+                    <h1 className="text-3xl font-bold mb-6">Model Dashboard</h1>
+                    
+                    <div className="bg-white p-4 rounded shadow mb-6 grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <input type="text" name="category" placeholder="Категория" value={filters.category} onChange={handleFilterChange} className="border p-2 rounded" />
+                        <input type="text" name="license" placeholder="Лицензия" value={filters.license} onChange={handleFilterChange} className="border p-2 rounded" />
+                        <input type="date" name="date_from" value={filters.date_from} onChange={handleFilterChange} className="border p-2 rounded" />
+                        <input type="date" name="date_to" value={filters.date_to} onChange={handleFilterChange} className="border p-2 rounded" />
+                        <input type="number" name="min_popularity" placeholder="Мин. популярность" value={filters.min_popularity} onChange={handleFilterChange} className="border p-2 rounded" />
+                        <select value={sortBy} onChange={handleSortChange} className="border p-2 rounded">
+                            <option value="date">По дате</option>
+                            <option value="popularity">По популярности</option>
+                        </select>
+                        <div className="flex gap-2">
+                            <button onClick={exportCSV} className="bg-green-500 text-white p-2 rounded">Экспорт CSV</button>
+                            <button onClick={exportXLSX} className="bg-blue-500 text-white p-2 rounded">Экспорт XLSX</button>
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                        <div className="bg-white p-4 rounded shadow">
+                            <h2 className="text-xl font-semibold mb-2">AI-фильтр (заглушка)</h2>
+                            <div className="flex gap-2">
+                                <input type="text" value={aiQuery} onChange={e => setAiQuery(e.target.value)} placeholder="Например: модели для обработки изображений" className="border p-2 flex-grow rounded" />
+                                <button onClick={handleAIFilter} className="bg-blue-500 text-white px-4 rounded">Поиск</button>
+                            </div>
+                        </div>
+                        <StatsPanel stats={stats} period={statsPeriod} setPeriod={setStatsPeriod} />
+                    </div>
+                    
+                    <div className="bg-white p-4 rounded shadow mb-6">
+                        <h2 className="text-xl font-semibold mb-2">Источники</h2>
+                        <div className="flex flex-wrap gap-2">
+                            {sources.map(src => <span key={src.id} className="bg-gray-200 px-3 py-1 rounded-full text-sm">{src.name}</span>)}
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {models.map(model => (
+                            <div key={model.id} className="bg-white rounded shadow card-hover cursor-pointer transition" onClick={() => setSelectedModelId(model.id)}>
+                                <div className="p-4">
+                                    <h3 className="font-bold text-lg truncate">{model.title}</h3>
+                                    <p className="text-sm text-gray-600">Категория: {model.category || '—'}</p>
+                                    <p className="text-sm text-gray-600">Лицензия: {model.license || '—'}</p>
+                                    <p className="text-sm text-gray-600">Популярность: {model.popularity_metric || '—'}</p>
+                                    <p className="text-sm text-gray-500 mt-2 line-clamp-2">{model.summary_ru || 'Нет описания'}</p>
+                                    <div className="mt-3 flex justify-between items-center">
+                                        <span className="text-xs text-gray-400">{model.source_name}</span>
+                                        <button onClick={(e) => { e.stopPropagation(); handleVectorSearch(model.id); }} className="text-blue-500 text-sm underline">Найти похожие</button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    {total === 0 && <p className="text-center text-gray-500 mt-6">Нет данных для отображения</p>}
+                    
+                    {total > 0 && (
+                        <div className="flex justify-center gap-2 mt-6">
+                            <button disabled={page === 1} onClick={() => setPage(p => p-1)} className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50">Назад</button>
+                            <span className="px-3 py-1">Страница {page} из {Math.ceil(total/12)}</span>
+                            <button disabled={page >= Math.ceil(total/12)} onClick={() => setPage(p => p+1)} className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50">Вперёд</button>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        
+        const rootElement = document.getElementById('root');
+        if (ReactDOM.createRoot) {
+            ReactDOM.createRoot(rootElement).render(<Dashboard />);
+        } else {
+            ReactDOM.render(<Dashboard />, rootElement);
+        }
+    </script>
+</body>
+</html>

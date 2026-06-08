@@ -1,0 +1,33 @@
+from typing import Optional, Dict, Any
+from datetime import datetime
+from fastapi import APIRouter, Query, Depends
+from app.models.schemas import ModelCard, ModelDetail
+from app.dependencies import get_data_provider
+
+router = APIRouter(prefix="/api", tags=["models"])
+
+@router.get("/models", response_model=Dict[str, Any])
+async def list_models(
+    category: Optional[str] = Query(None),
+    license: Optional[str] = Query(None),
+    date_from: Optional[datetime] = Query(None),
+    date_to: Optional[datetime] = Query(None),
+    min_popularity: Optional[int] = Query(None),
+    sort_by: str = Query("date", regex="^(date|popularity)$"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    provider = Depends(get_data_provider)
+):
+    filters = {
+        "category": category,
+        "license": license,
+        "date_from": date_from,
+        "date_to": date_to,
+        "min_popularity": min_popularity,
+    }
+    models, total = await provider.get_models(filters, page, limit, sort_by)
+    return {"items": models, "total": total, "page": page, "limit": limit}
+
+@router.get("/models/{model_id}", response_model=ModelDetail)
+async def get_model(model_id: str, provider = Depends(get_data_provider)):
+    return await provider.get_model_detail(model_id)
