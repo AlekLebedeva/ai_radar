@@ -17,7 +17,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from admin.router import router as admin_router
 from admin.auth import verify_session
 from database.base import Base
-from database.session import get_engine_for_lifespan, is_postgres
+from database.session import init_engine_for_app, is_postgres
+from database.bootstrap import seed_default_sources
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 @asynccontextmanager
@@ -26,6 +28,11 @@ async def lifespan(app: FastAPI):
     if is_postgres():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+
+        session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        async with session_factory() as session:
+            await seed_default_sources(session)
+
     yield
     await engine.dispose()
 
@@ -196,6 +203,6 @@ if __name__ == "__main__":
         "main:app",
         host="127.0.0.1",
         port=8000,
-        reload=True,
+        reload=False,
         log_level="info",
     )

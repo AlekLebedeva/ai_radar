@@ -1,19 +1,21 @@
 import asyncio
 import hashlib
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Any, Optional
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import ParserTask, ParserLog, RawItem
+from database.models import Source, ParserTask, ParserLog, RawItem
+from database.session import is_postgres
 from admin.service import TaskService, LogService
 from parsers.base import BaseParser
+from parsers.adapters import HuggingFaceAdapter, RedditAdapter
 
 
 class MockHuggingFaceParser(BaseParser):
-    async def fetch(self, date_from, date_to, filters=None, max_items=1000):
+    async def fetch(self, date_from, date_to, filters=None, max_items=1000, task_id=None):
         await asyncio.sleep(0.5)
         return [
             {
@@ -40,7 +42,7 @@ class MockHuggingFaceParser(BaseParser):
 
 
 class MockGitHubParser(BaseParser):
-    async def fetch(self, date_from, date_to, filters=None, max_items=1000):
+    async def fetch(self, date_from, date_to, filters=None, max_items=1000, task_id=None):
         await asyncio.sleep(0.5)
         return [
             {
@@ -67,7 +69,7 @@ class MockGitHubParser(BaseParser):
 
 
 class MockArxivParser(BaseParser):
-    async def fetch(self, date_from, date_to, filters=None, max_items=1000):
+    async def fetch(self, date_from, date_to, filters=None, max_items=1000, task_id=None):
         await asyncio.sleep(0.5)
         return [
             {
@@ -94,7 +96,7 @@ class MockArxivParser(BaseParser):
 
 
 class MockPyPIParser(BaseParser):
-    async def fetch(self, date_from, date_to, filters=None, max_items=1000):
+    async def fetch(self, date_from, date_to, filters=None, max_items=1000, task_id=None):
         await asyncio.sleep(0.3)
         return [
             {
@@ -121,7 +123,7 @@ class MockPyPIParser(BaseParser):
 
 
 class MockWebParser(BaseParser):
-    async def fetch(self, date_from, date_to, filters=None, max_items=1000):
+    async def fetch(self, date_from, date_to, filters=None, max_items=1000, task_id=None):
         await asyncio.sleep(0.3)
         return [
             {
@@ -148,12 +150,59 @@ class MockWebParser(BaseParser):
 
 
 PARSER_REGISTRY = {
-    "huggingface": MockHuggingFaceParser("huggingface", "HuggingFace", "https://huggingface.co/api"),
+    "huggingface": HuggingFaceAdapter(),
+    "reddit": RedditAdapter(),
     "github": MockGitHubParser("github", "GitHub", "https://api.github.com"),
     "arxiv": MockArxivParser("arxiv", "arXiv", "http://export.arxiv.org/api"),
     "pypi": MockPyPIParser("pypi", "PyPI", "https://pypi.org/pypi"),
     "web": MockWebParser("web", "Web/Reddit", ""),
 }
+
+
+def _json_safe(value: Any) -> Any:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, UUID):
+        return str(value)
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe(item) for item in value]
+    if hasattr(value, "model_dump"):
+        return _json_safe(value.model_dump())
+    if hasattr(value, "to_dict"):
+        return _json_safe(value.to_dict())
+    if hasattr(value, "__dict__"):
+        return _json_safe(
+            {
+                key: item
+                for key, item in value.__dict__.items()
+                if not key.startswith("_")
+            }
+        )
+    return str(value)
+
+
+def _datetime_safe(value: Any) -> Optional[datetime]:
+    if value is None or isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        if parsed.tzinfo is not None:
+            return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
+    return None
+
+
+def _array_safe(value: Any) -> Any:
+    if is_postgres() or value is None:
+        return value
+    return None
 
 
 class ParserEngine:
@@ -173,11 +222,20 @@ class ParserEngine:
             await self.task_svc.update_status(task_id, "failed", error=f"Unknown parser: {task.parser_name}")
             return
 
-        log = await self.log_svc.create(
+        source_result = await self.db.execute(select(Source).where(Source.code == task.parser_name))
+        source = source_result.scalar_one_or_none()
+        if not source:
+            await self.task_svc.update_status(task_id, "failed", error=f"Source not found: {task.parser_name}")
+            return
+
+        log = ParserLog(
             parser_name=task.parser_name,
             task_id=task_id,
             status="running",
         )
+        self.db.add(log)
+        await self.db.commit()
+        await self.db.refresh(log)
 
         await self.task_svc.update_status(task_id, "running")
 
@@ -186,6 +244,8 @@ class ParserEngine:
                 date_from=task.date_from,
                 date_to=task.date_to,
                 filters=task.filters,
+                max_items=task.max_items or 1000,
+                task_id=task.id,
             )
 
             items_collected = len(raw_data)
@@ -193,6 +253,8 @@ class ParserEngine:
 
             for item in raw_data:
                 normalized = parser.normalize(item)
+                if not all(normalized.get(key) for key in ("external_id", "title", "url")):
+                    continue
                 item_hash = hashlib.sha256(
                     f"{normalized['url']}:{normalized['external_id']}".encode()
                 ).hexdigest()
@@ -204,26 +266,26 @@ class ParserEngine:
                     continue
 
                 raw_item = RawItem(
-                    source_id=task.parser_name,
+                    source_id=source.id,
                     task_id=task_id,
                     external_id=normalized["external_id"],
                     title=normalized["title"],
                     model_type=normalized.get("model_type"),
-                    domain=normalized.get("domain"),
+                    domain=_array_safe(normalized.get("domain")),
                     description=normalized.get("description"),
                     url=normalized["url"],
                     author=normalized.get("author"),
                     license=normalized.get("license"),
-                    tags=normalized.get("tags"),
+                    tags=_array_safe(normalized.get("tags")),
                     popularity_metric=normalized.get("popularity_metric"),
-                    created_at_source=normalized.get("created_at_source"),
-                    updated_at_source=normalized.get("updated_at_source"),
-                    language=normalized.get("language"),
-                    framework=normalized.get("framework"),
-                    task_type=normalized.get("task_type"),
-                    raw_json=normalized,
+                    created_at_source=_datetime_safe(normalized.get("created_at_source")),
+                    updated_at_source=_datetime_safe(normalized.get("updated_at_source")),
+                    language=_array_safe(normalized.get("language")),
+                    framework=_array_safe(normalized.get("framework")),
+                    task_type=_array_safe(normalized.get("task_type")),
+                    raw_json=_json_safe(normalized),
                     hash=item_hash,
-                    status="raw",
+                    status=normalized.get("status") or "raw",
                 )
                 self.db.add(raw_item)
                 items_new += 1

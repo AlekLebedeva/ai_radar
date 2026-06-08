@@ -102,6 +102,8 @@ class ParserTask(Base):
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
     triggered_by: Mapped[str] = mapped_column(String(20), default="admin")
     filters: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    max_items: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     source: Mapped["Source"] = relationship(back_populates="tasks")
 
