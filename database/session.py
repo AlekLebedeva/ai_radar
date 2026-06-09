@@ -45,7 +45,7 @@ def _ensure_engine():
         _db_type = "postgres"
         print("[DB] PostgreSQL engine created")
     except Exception as e:
-        print(f"[DB] PostgreSQL failed: {e}")
+        print(f"[DB] PostgreSQL failed: {type(e).__name__}")
         print("[DB] Switching to SQLite (demo mode)")
         _engine = _init_sqlite()
         _db_type = "sqlite"
@@ -81,7 +81,7 @@ async def init_engine_for_app():
             pass
         print("[DB] PostgreSQL connection verified")
     except Exception as exc:
-        print(f"[DB] PostgreSQL startup failed: {exc}")
+        print(f"[DB] PostgreSQL startup failed: {type(exc).__name__}")
         print("[DB] Switching to SQLite (demo mode)")
         if _engine is not None:
             await _engine.dispose()
@@ -109,7 +109,7 @@ async def get_db() -> AsyncSession:
             async with _engine.connect() as conn:
                 pass
         except Exception as exc:
-            print(f"[DB] PostgreSQL connect failed: {exc}")
+            print(f"[DB] PostgreSQL connect failed: {type(exc).__name__}")
             print("[DB] Switching to SQLite (demo mode)")
             _engine = _init_sqlite()
             _db_type = "sqlite"

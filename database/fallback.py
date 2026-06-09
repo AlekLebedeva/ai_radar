@@ -121,6 +121,34 @@ def init_sqlite():
         )
         """,
         """
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            last_login TEXT
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            user_id TEXT PRIMARY KEY,
+            display_name TEXT,
+            email TEXT,
+            email_notifications INTEGER DEFAULT 1,
+            digest_frequency TEXT DEFAULT 'daily',
+            onboarding_completed INTEGER DEFAULT 0,
+            settings TEXT
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS user_interests (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            category TEXT NOT NULL,
+            weight REAL DEFAULT 1.0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, category)
+        )
+        """,
+        """
         CREATE TABLE IF NOT EXISTS user_activity_logs (
             id TEXT PRIMARY KEY,
             user_id TEXT,

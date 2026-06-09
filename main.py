@@ -6,6 +6,7 @@ AI Radar — Main Application Entry Point
 import uvicorn
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +16,7 @@ from fastapi.openapi.utils import get_openapi
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from admin.router import router as admin_router
+from user.router import router as user_router
 from admin.auth import verify_session
 from static.dashboard.main import app as dashboard_app
 from database.base import Base
@@ -34,7 +36,11 @@ async def lifespan(app: FastAPI):
         async with session_factory() as session:
             await seed_default_sources(session)
 
+    app.state.http_client = httpx.AsyncClient(timeout=10.0)
+
     yield
+
+    await app.state.http_client.aclose()
     await engine.dispose()
 
 
@@ -162,6 +168,7 @@ async def admin_spa(request: Request, path: str = ""):
 #  API routes
 # ═══════════════════════════════════════════════════════
 app.include_router(admin_router)
+app.include_router(user_router)
 
 
 @app.get("/")
@@ -187,7 +194,7 @@ async def health():
         "status": "ok",
         "service": "ai-radar",
         "version": "1.0.0",
-        "database": "postgresql" if is_postgres() else "sqlite (demo)",
+        "database": "postgresql" if is_postgres() else "Error db server",
     }
 
 

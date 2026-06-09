@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password: str = "admin"
 
+    # ─── External Services ───
+    auth_service_url: str = "http://localhost:8001"
+
     @field_validator("debug", mode="before")
     @classmethod
     def parse_debug_mode(cls, value):
@@ -32,3 +35,10 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+SERVICES = {
+    "auth": {
+        "url": get_settings().auth_service_url
+    }
+}
