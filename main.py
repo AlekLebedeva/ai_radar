@@ -22,24 +22,44 @@ from static.dashboard.main import app as dashboard_app
 from database.base import Base
 from database.session import init_engine_for_app, is_postgres
 from database.bootstrap import seed_default_sources
+from admin.service import SchedulerService
+from admin.schemas import SchedulerConfigUpdate
+from parsers.scheduler import BackgroundScheduler
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+
+_scheduler: BackgroundScheduler | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _scheduler
     engine = await init_engine_for_app()
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
     if is_postgres():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-        session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         async with session_factory() as session:
             await seed_default_sources(session)
 
     app.state.http_client = httpx.AsyncClient(timeout=10.0)
 
+    _scheduler = BackgroundScheduler(session_factory)
+    app.state.scheduler = _scheduler
+
+    async with session_factory() as session:
+        svc = SchedulerService(session)
+        await svc.ensure_config_exists()
+
+    if _scheduler:
+        asyncio.create_task(_scheduler.start())
+
     yield
 
+    if _scheduler:
+        await _scheduler.stop()
     await app.state.http_client.aclose()
     await engine.dispose()
 

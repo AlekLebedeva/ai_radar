@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     # ─── External Services ───
     auth_service_url: str = "http://localhost:8001"
 
+    # ─── Scheduler ───
+    scheduler_interval_hours: int = 48
+    scheduler_enabled: bool = False
+
     @field_validator("debug", mode="before")
     @classmethod
     def parse_debug_mode(cls, value):

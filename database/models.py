@@ -178,3 +178,17 @@ class UserActivityLog(Base):
     session_duration_sec: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     meta: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class SchedulerConfig(Base):
+    __tablename__ = "scheduler_config"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    interval_hours: Mapped[int] = mapped_column(Integer, default=48)
+    start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_run: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    next_run: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    parsers: Mapped[Optional[list]] = mapped_column(ARRAY(String), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

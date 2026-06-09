@@ -14,10 +14,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial load
     loadPage(currentPage);
 
-    // Auto-refresh dashboard every 10s
+    // Auto-refresh dashboard and pipeline every 10s
     refreshInterval = setInterval(() => {
         if (currentPage === 'dashboard') {
             loadDashboard();
+        } else if (currentPage === 'pipeline') {
+            loadPipeline();
+            loadScheduler();
         }
     }, 10000);
 });
@@ -69,6 +72,7 @@ function loadPage(page) {
             break;
         case 'pipeline':
             loadPipeline();
+            loadScheduler();
             break;
         case 'tasks':
             loadTasks();

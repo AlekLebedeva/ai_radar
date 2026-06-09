@@ -144,3 +144,25 @@ class PipelineEdge(BaseModel):
 class PipelineStatus(BaseModel):
     nodes: List[PipelineNode]
     edges: List[PipelineEdge]
+
+
+# ─── Scheduler ───
+class SchedulerConfigOut(BaseModel):
+    enabled: bool
+    interval_hours: int
+    start_date: Optional[datetime]
+    last_run: Optional[datetime]
+    next_run: Optional[datetime]
+    parsers: Optional[List[str]]
+    updated_at: datetime
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SchedulerConfigUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    interval_hours: Optional[int] = None
+    start_date: Optional[datetime] = None
+    parsers: Optional[List[str]] = None

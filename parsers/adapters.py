@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 from parsers.base import BaseParser
 from parsers.arxiv_parser import ArxivConfig, fetch_arxiv_papers, setup_logger
+from parsers.github_parser import GitHubParser as GitHubParserImpl
 from parsers.parse import HuggingFaceModelsParser
 from parsers.reddit_parser import RedditParser
 from parsers.task import ParserRunTask
@@ -24,6 +25,34 @@ def _as_utc_aware(value: Any) -> Any:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
+class GitHubAdapter(BaseParser):
+    def __init__(self):
+        super().__init__("github", "GitHub", "https://api.github.com")
+        self._parser: Optional[GitHubParserImpl] = None
+
+    async def fetch(self, date_from, date_to, filters=None, max_items=1000, task_id: Optional[uuid.UUID] = None):
+        if self._parser is None:
+            self._parser = GitHubParserImpl()
+        return await asyncio.to_thread(
+            self._parser.fetch,
+            _as_utc_aware(date_from),
+            _as_utc_aware(date_to),
+            filters,
+            max_items,
+        )
+
+    def normalize(self, raw_item: dict[str, Any]) -> dict[str, Any]:
+        item = dict(raw_item)
+        item["created_at_source"] = _as_utc_naive(item.get("created_at_source"))
+        item["updated_at_source"] = _as_utc_naive(item.get("updated_at_source"))
+        item["domain"] = item.get("domain") or []
+        item["tags"] = item.get("tags") or []
+        item["language"] = item.get("language") or []
+        item["framework"] = item.get("framework") or []
+        item["task_type"] = item.get("task_type") or []
+        return item
 
 
 class HuggingFaceAdapter(BaseParser):
