@@ -81,6 +81,10 @@ class ParserEngine:
             await self.task_svc.update_status(task_id, "failed", error=f"Source not found: {task.parser_name}")
             return
 
+        if not source.is_active:
+            await self.task_svc.update_status(task_id, "failed", error=f"Source '{task.parser_name}' is disabled")
+            return
+
         log = ParserLog(
             parser_name=task.parser_name,
             task_id=task_id,

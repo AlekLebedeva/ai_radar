@@ -11,10 +11,13 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from sqlalchemy import select
+
+from database.models import Source
 from admin.service import TaskService, SchedulerService
 from admin.schemas import TaskCreate, SchedulerConfigOut
 from parsers.engine import ParserEngine
-from parsers.registry import PARSER_SPECS, get_parser_spec
+from parsers.registry import get_parser_spec
 
 logger = logging.getLogger("ai_radar.scheduler")
 
@@ -79,13 +82,22 @@ class BackgroundScheduler:
     async def _run_cycle(self, db: AsyncSession, config: SchedulerConfigOut):
         now = datetime.utcnow()
         interval = timedelta(hours=config.interval_hours)
-        parsers = config.parsers or [spec.code for spec in PARSER_SPECS if spec.implemented]
+
+        result = await db.execute(select(Source).where(Source.is_active == True))
+        active_sources = result.scalars().all()
+
+        if not active_sources:
+            logger.warning("[SCHEDULER] No active sources found, skipping cycle")
+            next_run = now + interval
+            await SchedulerService(db).update_last_run(now, next_run)
+            return
 
         task_svc = TaskService(db)
         svc = SchedulerService(db)
 
         total_created = 0
-        for parser_name in parsers:
+        for src in active_sources:
+            parser_name = src.code
             spec = get_parser_spec(parser_name)
             if not spec or not spec.implemented:
                 continue

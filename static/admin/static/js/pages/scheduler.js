@@ -45,14 +45,6 @@ function renderScheduler(config) {
         document.getElementById('scheduler-start-date').value = d.toISOString().slice(0, 16);
     }
 
-    const checkboxes = document.querySelectorAll('#scheduler-parsers-list input[type="checkbox"]');
-    const activeParsers = config.parsers || ['github', 'reddit', 'huggingface', 'arxiv'];
-    checkboxes.forEach(cb => {
-        cb.checked = activeParsers.includes(cb.value);
-    });
-
-    document.getElementById('scheduler-parsers').textContent = (config.parsers || []).join(', ');
-
     updateButtonStates(config.enabled);
 }
 
@@ -98,15 +90,9 @@ function initSchedulerControls() {
         const interval = parseInt(document.getElementById('scheduler-interval-input').value, 10) || 48;
         const startDate = document.getElementById('scheduler-start-date').value;
 
-        const parserCheckboxes = document.querySelectorAll('#scheduler-parsers-list input[type="checkbox"]:checked');
-        const parsers = Array.from(parserCheckboxes).map(cb => cb.value);
-
         const payload = { interval_hours: interval };
         if (startDate) {
             payload.start_date = new Date(startDate).toISOString();
-        }
-        if (parsers.length > 0) {
-            payload.parsers = parsers;
         }
 
         try {

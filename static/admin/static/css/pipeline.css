@@ -47,3 +47,4 @@
 .btn-accent:hover {
     filter: brightness(1.15);
 }
+.form-info { padding: 8px 0; font-size: 13px; }

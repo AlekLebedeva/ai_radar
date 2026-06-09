@@ -189,6 +189,5 @@ class SchedulerConfig(Base):
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     last_run: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     next_run: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    parsers: Mapped[Optional[list]] = mapped_column(ARRAY(String), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

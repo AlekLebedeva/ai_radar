@@ -147,10 +147,6 @@
                                     <span class="detail-label">Следующий запуск:</span>
                                     <span id="scheduler-next-run">-</span>
                                 </div>
-                                <div class="scheduler-detail">
-                                    <span class="detail-label">Парсеры:</span>
-                                    <span id="scheduler-parsers">-</span>
-                                </div>
                             </div>
                         </div>
                         <div class="scheduler-settings">
@@ -165,14 +161,8 @@
                                     <input type="datetime-local" class="form-control" id="scheduler-start-date">
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label>Парсеры для запуска</label>
-                                <div class="checkbox-group" id="scheduler-parsers-list">
-                                    <label class="checkbox-label"><input type="checkbox" value="github" checked> GitHub</label>
-                                    <label class="checkbox-label"><input type="checkbox" value="reddit" checked> Reddit</label>
-                                    <label class="checkbox-label"><input type="checkbox" value="huggingface" checked> HuggingFace</label>
-                                    <label class="checkbox-label"><input type="checkbox" value="arxiv" checked> arXiv</label>
-                                </div>
+                            <div class="form-info">
+                                <span class="text-muted">Шедулер запускает только активные источники (управление в разделе <a href="#" data-page="sources" class="link">Источники</a>)</span>
                             </div>
                             <button class="btn btn-primary" id="btn-scheduler-save">Сохранить настройки</button>
                         </div>

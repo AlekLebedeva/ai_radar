@@ -372,7 +372,6 @@ class SchedulerService:
             enabled=False,
             interval_hours=48,
             start_date=None,
-            parsers=["github", "reddit", "huggingface", "arxiv"],
         )
         self.db.add(config)
         await self.db.commit()

@@ -153,7 +153,6 @@ class SchedulerConfigOut(BaseModel):
     start_date: Optional[datetime]
     last_run: Optional[datetime]
     next_run: Optional[datetime]
-    parsers: Optional[List[str]]
     updated_at: datetime
     created_at: datetime
 
@@ -165,4 +164,3 @@ class SchedulerConfigUpdate(BaseModel):
     enabled: Optional[bool] = None
     interval_hours: Optional[int] = None
     start_date: Optional[datetime] = None
-    parsers: Optional[List[str]] = None

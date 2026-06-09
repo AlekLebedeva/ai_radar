@@ -15,7 +15,7 @@ from admin.schemas import (
 )
 from admin.service import SourceService, TaskService, LogService, StatsService, PipelineService, SchedulerService
 from parsers.engine import ParserEngine
-from parsers.registry import get_parser_spec, PARSER_SPECS
+from parsers.registry import get_parser_spec
 from admin.auth import get_current_admin, create_session, destroy_session, _verify, _hash, ADMIN_COOKIE, SESSION_TTL
 
 from llm.processor import LLMProcessor
@@ -331,18 +331,26 @@ async def trigger_scheduler_run(
     db: AsyncSession = Depends(get_db),
     admin: str = Depends(get_current_admin),
 ):
+    from sqlalchemy import select
+    from database.models import Source
+
     svc = SchedulerService(db)
     config = await svc.ensure_config_exists()
 
     if not config.enabled:
         raise HTTPException(status_code=400, detail="Scheduler is disabled. Enable it first.")
 
-    parsers = config.parsers or [spec.code for spec in PARSER_SPECS if spec.implemented]
+    result = await db.execute(select(Source).where(Source.is_active == True))
+    active_sources = result.scalars().all()
+
+    if not active_sources:
+        raise HTTPException(status_code=400, detail="No active sources found. Enable sources in the Sources tab first.")
 
     engine = ParserEngine(db)
     tasks_created = []
 
-    for parser_name in parsers:
+    for src in active_sources:
+        parser_name = src.code
         spec = get_parser_spec(parser_name)
         if not spec or not spec.implemented:
             continue
