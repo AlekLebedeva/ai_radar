@@ -111,7 +111,9 @@ class ProtectedStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
         request = Request(scope)
         # Проверяем сессию для всего кроме login страницы
-        if not path.startswith("login") and not path.startswith("js/login"):
+        # Нормализуем путь для кроссплатформенности (Windows использует \)
+        norm_path = path.replace("\\", "/")
+        if not norm_path.startswith("login") and not norm_path.startswith("js/login"):
             try:
                 verify_session(request)
             except Exception:
