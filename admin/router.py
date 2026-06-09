@@ -5,8 +5,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from fastapi.responses import JSONResponse
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from database.models import Source
 from database.session import get_db
 from admin.schemas import (
     SourceCreate, SourceOut, TaskCreate, HuggingFaceTaskCreate, TaskOut, TaskRetry,
@@ -331,9 +333,6 @@ async def trigger_scheduler_run(
     db: AsyncSession = Depends(get_db),
     admin: str = Depends(get_current_admin),
 ):
-    from sqlalchemy import select
-    from database.models import Source
-
     svc = SchedulerService(db)
     config = await svc.ensure_config_exists()
 

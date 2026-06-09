@@ -80,7 +80,9 @@ function initSchedulerControls() {
         try {
             const result = await api('/scheduler/trigger', { method: 'POST' });
             showToast(`Запущено задач: ${result.tasks.length}`, 'success');
-            loadScheduler();
+            try {
+                await loadScheduler();
+            } catch (_) {}
         } catch (err) {
             showToast('Ошибка запуска: ' + (err.message || ''), 'error');
         }

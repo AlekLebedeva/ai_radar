@@ -1,4 +1,5 @@
 import hashlib
+import json
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import Source, ParserTask, ParserLog, RawItem
 from database.session import is_postgres
 from admin.service import TaskService, LogService
-from parsers.registry import PARSER_REGISTRY, get_parser
+from parsers.registry import get_parser
 
 
 def _json_safe(value: Any) -> Any:
@@ -53,9 +54,11 @@ def _datetime_safe(value: Any) -> Optional[datetime]:
 
 
 def _array_safe(value: Any) -> Any:
-    if is_postgres() or value is None:
+    if value is None:
+        return None
+    if is_postgres():
         return value
-    return None
+    return json.dumps(value, ensure_ascii=False, default=str)
 
 
 class ParserEngine:

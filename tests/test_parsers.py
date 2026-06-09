@@ -393,7 +393,7 @@ class ParserRegistryTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(get_parser_spec("arxiv").implemented)
         self.assertTrue(get_parser_spec("arxiv").is_active)
 
-        for code in ("github", "pypi"):
+        for code in ("pypi",):
             with self.subTest(parser=code):
                 spec = get_parser_spec(code)
                 parser = PARSER_REGISTRY[code]
@@ -404,6 +404,13 @@ class ParserRegistryTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIsInstance(parser, PendingParserAdapter)
                 with self.assertRaisesRegex(NotImplementedError, "pending"):
                     await parser.fetch(datetime(2024, 1, 1), datetime(2024, 2, 1))
+
+        spec = get_parser_spec("github")
+        self.assertIsNotNone(spec)
+        self.assertTrue(spec.implemented)
+        self.assertTrue(spec.is_active)
+        from parsers.adapters import GitHubAdapter
+        self.assertIsInstance(PARSER_REGISTRY["github"], GitHubAdapter)
 
     async def test_pending_parser_normalizes_common_fields(self):
         parser = PendingParserAdapter("github", "GitHub")
@@ -426,7 +433,7 @@ class ParserRegistryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(set(payloads), {"huggingface", "reddit", "github", "arxiv", "pypi"})
         self.assertTrue(payloads["huggingface"]["is_active"])
         self.assertTrue(payloads["reddit"]["is_active"])
-        self.assertFalse(payloads["github"]["is_active"])
+        self.assertTrue(payloads["github"]["is_active"])
         self.assertTrue(payloads["arxiv"]["is_active"])
         self.assertFalse(payloads["pypi"]["is_active"])
 

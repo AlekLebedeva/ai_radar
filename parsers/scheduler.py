@@ -26,6 +26,7 @@ class BackgroundScheduler:
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
         self._session_factory = session_factory
         self._task: asyncio.Task | None = None
+        self._spawned: set[asyncio.Task] = set()
         self._shutdown = asyncio.Event()
 
     @property
@@ -40,44 +41,63 @@ class BackgroundScheduler:
         self._task = asyncio.create_task(self._run_loop())
         logger.info("[SCHEDULER] Started background loop")
 
+    async def _track(self, coro):
+        task = asyncio.create_task(coro)
+        self._spawned.add(task)
+        task.add_done_callback(self._spawned.discard)
+        return task
+
+    async def _run_task_with_session(self, task_id):
+        async with self._session_factory() as task_db:
+            eng = ParserEngine(task_db)
+            await eng.run_task(task_id)
+
     async def stop(self):
-        if not self.running:
-            return
         self._shutdown.set()
-        self._task.cancel()
-        try:
-            await self._task
-        except asyncio.CancelledError:
-            pass
-        self._task = None
+        if self._task:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+            self._task = None
+        if self._spawned:
+            logger.info("[SCHEDULER] Waiting for %d spawned tasks...", len(self._spawned))
+            for t in list(self._spawned):
+                t.cancel()
+            await asyncio.gather(*self._spawned, return_exceptions=True)
+            self._spawned.clear()
         logger.info("[SCHEDULER] Stopped")
 
     async def _run_loop(self):
         while not self._shutdown.is_set():
             try:
                 async with self._session_factory() as db:
-                    svc = SchedulerService(db)
-                    config = await svc.get_config()
-
-                    if config and config.enabled:
-                        now = datetime.utcnow()
-                        next_run = config.next_run
-
-                        if next_run is None:
-                            next_run = config.start_date or now
-                            await svc.update_last_run(None, next_run)
-
-                        if next_run and now >= next_run:
-                            logger.info("[SCHEDULER] Triggering cycle...")
-                            await self._run_cycle(db, config)
-                    else:
-                        logger.debug("[SCHEDULER] Disabled, skipping cycle")
+                    await self._check_and_run(db)
             except asyncio.CancelledError:
                 break
             except Exception:
                 logger.exception("[SCHEDULER] Loop error")
 
             await asyncio.sleep(60)
+
+    async def _check_and_run(self, db: AsyncSession):
+        svc = SchedulerService(db)
+        config = await svc.get_config()
+
+        if not config or not config.enabled:
+            return
+
+        now = datetime.utcnow()
+        next_run = config.next_run
+
+        if next_run is None:
+            next_run = config.start_date or now
+            await svc.update_last_run(None, next_run)
+
+        if next_run and now >= next_run:
+            logger.info("[SCHEDULER] Triggering cycle...")
+            await self._run_cycle(db, config)
 
     async def _run_cycle(self, db: AsyncSession, config: SchedulerConfigOut):
         now = datetime.utcnow()
@@ -112,12 +132,7 @@ class BackgroundScheduler:
                 )
                 task = await task_svc.create(task_data, triggered_by="scheduler")
 
-                async def _run_with_session(tid):
-                    async with self._session_factory() as task_db:
-                        eng = ParserEngine(task_db)
-                        await eng.run_task(tid)
-
-                asyncio.create_task(_run_with_session(task.id))
+                await self._track(self._run_task_with_session(task.id))
                 total_created += 1
                 logger.info("[SCHEDULER] Created task for %s (id=%s)", parser_name, task.id)
             except Exception as e:

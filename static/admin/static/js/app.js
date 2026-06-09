@@ -14,11 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial load
     loadPage(currentPage);
 
-    // Auto-refresh dashboard and pipeline every 10s
+    // Auto-refresh dashboard and pipeline every 10s (skip if user is editing)
     refreshInterval = setInterval(() => {
         if (currentPage === 'dashboard') {
             loadDashboard();
         } else if (currentPage === 'pipeline') {
+            const active = document.activeElement;
+            if (active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'TEXTAREA')) {
+                return;
+            }
             loadPipeline();
             loadScheduler();
         }
