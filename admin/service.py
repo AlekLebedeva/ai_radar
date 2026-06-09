@@ -6,11 +6,12 @@ from sqlalchemy import select, func, update, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models import (
-    Source, RawItem, EnrichedItem, Vector, ParserTask, ParserLog
+    Source, RawItem, EnrichedItem, Vector, ParserTask, ParserLog, SchedulerConfig
 )
 from admin.schemas import (
     SourceCreate, SourceOut, TaskCreate, TaskOut, LogOut,
-    TableStat, StatsOut, PipelineNode, PipelineEdge, PipelineStatus
+    TableStat, StatsOut, PipelineNode, PipelineEdge, PipelineStatus,
+    SchedulerConfigOut, SchedulerConfigUpdate
 )
 
 
@@ -249,6 +250,22 @@ class PipelineService:
         nodes = []
         edges = []
 
+        # Scheduler node
+        scheduler_config = await self.db.execute(
+            select(SchedulerConfig).where(SchedulerConfig.id == 1)
+        )
+        sc = scheduler_config.scalar_one_or_none()
+        scheduler_status = "running" if sc and sc.enabled else "idle"
+        nodes.append(
+            PipelineNode(
+                node_id="scheduler",
+                label="Шедулер (48ч)",
+                status=scheduler_status,
+                count=sc.interval_hours if sc else 48,
+                last_run=sc.last_run if sc else None,
+            )
+        )
+
         # Sources status
         sources_result = await self.db.execute(select(Source))
         sources = sources_result.scalars().all()
@@ -325,7 +342,8 @@ class PipelineService:
             )
         )
 
-        edges = [PipelineEdge(from_node=f"source_{src.code}", to_node="collect") for src in sources]
+        edges = [PipelineEdge(from_node="scheduler", to_node=f"source_{src.code}") for src in sources]
+        edges.extend([PipelineEdge(from_node=f"source_{src.code}", to_node="collect") for src in sources])
         edges.extend(
             [
                 PipelineEdge(from_node="collect", to_node="dedup"),
@@ -335,3 +353,63 @@ class PipelineService:
         )
 
         return PipelineStatus(nodes=nodes, edges=edges)
+
+
+class SchedulerService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def get_config(self) -> Optional[SchedulerConfigOut]:
+        result = await self.db.execute(select(SchedulerConfig).where(SchedulerConfig.id == 1))
+        config = result.scalar_one_or_none()
+        if not config:
+            return None
+        return SchedulerConfigOut.model_validate(config)
+
+    async def create_default(self) -> SchedulerConfigOut:
+        config = SchedulerConfig(
+            id=1,
+            enabled=False,
+            interval_hours=48,
+            start_date=None,
+        )
+        self.db.add(config)
+        await self.db.commit()
+        await self.db.refresh(config)
+        return SchedulerConfigOut.model_validate(config)
+
+    async def update_config(self, data: SchedulerConfigUpdate) -> SchedulerConfigOut:
+        result = await self.db.execute(select(SchedulerConfig).where(SchedulerConfig.id == 1))
+        config = result.scalar_one_or_none()
+        if not config:
+            config = await self.create_default()
+            result = await self.db.execute(select(SchedulerConfig).where(SchedulerConfig.id == 1))
+            config = result.scalar_one_or_none()
+
+        update_data = data.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(config, key, value)
+
+        if config.enabled and config.start_date is None:
+            config.start_date = datetime.utcnow()
+
+        if config.enabled and config.last_run is None:
+            config.next_run = config.start_date or datetime.utcnow()
+
+        await self.db.commit()
+        await self.db.refresh(config)
+        return SchedulerConfigOut.model_validate(config)
+
+    async def update_last_run(self, last_run: datetime, next_run: datetime) -> None:
+        await self.db.execute(
+            update(SchedulerConfig)
+            .where(SchedulerConfig.id == 1)
+            .values(last_run=last_run, next_run=next_run)
+        )
+        await self.db.commit()
+
+    async def ensure_config_exists(self) -> SchedulerConfigOut:
+        config = await self.get_config()
+        if not config:
+            return await self.create_default()
+        return config

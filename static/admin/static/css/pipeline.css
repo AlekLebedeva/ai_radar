@@ -20,3 +20,31 @@
 @media (max-width: 1024px) {
     .stats-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 }
+
+/* ─── Scheduler Panel ─── */
+.scheduler-info { padding: 16px 20px; display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; }
+.scheduler-status { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; }
+.scheduler-indicator { font-size: 20px; }
+.scheduler-indicator.running { color: var(--accent-green); animation: pulse 2s infinite; }
+.scheduler-indicator.idle { color: var(--text-muted); }
+.scheduler-details { display: flex; gap: 24px; flex-wrap: wrap; }
+.scheduler-detail { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.detail-label { color: var(--text-secondary); font-weight: 500; }
+.scheduler-actions { display: flex; gap: 8px; }
+.scheduler-settings { padding: 16px 20px; border-top: 1px solid var(--border-color); }
+.scheduler-settings h4 { margin: 0 0 12px; font-size: 14px; color: var(--text-secondary); }
+.checkbox-group { display: flex; gap: 16px; flex-wrap: wrap; padding: 8px 0; }
+.checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+.checkbox-label input { width: 16px; height: 16px; cursor: pointer; }
+.btn-accent { background: var(--accent-purple); color: #fff; }
+.btn-accent:hover { filter: brightness(1.1); }
+
+.btn-accent {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    color: #fff;
+    border: none;
+}
+.btn-accent:hover {
+    filter: brightness(1.15);
+}
+.form-info { padding: 8px 0; font-size: 13px; }

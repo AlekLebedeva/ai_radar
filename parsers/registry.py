@@ -40,8 +40,6 @@ PARSER_SPECS: tuple[ParserSpec, ...] = (
         api_doc_url="https://docs.github.com/en/rest",
         auth_type="token_header",
         rate_limit={"rpm": 30},
-        is_active=False,
-        implemented=False,
     ),
     ParserSpec(
         code="arxiv",
@@ -71,6 +69,10 @@ def _build_parser_factory(spec: ParserSpec) -> Callable[[], BaseParser]:
         from parsers.adapters import RedditAdapter
 
         return RedditAdapter
+    if spec.code == "github":
+        from parsers.adapters import GitHubAdapter
+
+        return GitHubAdapter
     if spec.code == "arxiv":
         from parsers.adapters import ArxivAdapter
 

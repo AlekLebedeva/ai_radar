@@ -1,18 +1,21 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from fastapi.responses import JSONResponse
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from database.models import Source
 from database.session import get_db
 from admin.schemas import (
     SourceCreate, SourceOut, TaskCreate, HuggingFaceTaskCreate, TaskOut, TaskRetry,
-    LogOut, LogFilter, StatsOut, PipelineStatus, RedditTaskCreate, ParserRunCreate
+    LogOut, LogFilter, StatsOut, PipelineStatus, RedditTaskCreate, ParserRunCreate,
+    SchedulerConfigOut, SchedulerConfigUpdate
 )
-from admin.service import SourceService, TaskService, LogService, StatsService, PipelineService
+from admin.service import SourceService, TaskService, LogService, StatsService, PipelineService, SchedulerService
 from parsers.engine import ParserEngine
 from parsers.registry import get_parser_spec
 from admin.auth import get_current_admin, create_session, destroy_session, _verify, _hash, ADMIN_COOKIE, SESSION_TTL
@@ -289,3 +292,79 @@ async def llm_status(admin: str = Depends(get_current_admin)):
         "base_url": client.base_url,
         "api_key_configured": bool(client.api_key),
     }
+
+
+# ─── Scheduler ───
+@router.get("/scheduler", response_model=SchedulerConfigOut)
+async def get_scheduler_config(db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
+    svc = SchedulerService(db)
+    config = await svc.ensure_config_exists()
+    return config
+
+
+@router.patch("/scheduler", response_model=SchedulerConfigOut)
+async def update_scheduler_config(
+    data: SchedulerConfigUpdate,
+    db: AsyncSession = Depends(get_db),
+    admin: str = Depends(get_current_admin),
+):
+    svc = SchedulerService(db)
+    config = await svc.update_config(data)
+    return config
+
+
+@router.post("/scheduler/enable", response_model=SchedulerConfigOut)
+async def enable_scheduler(db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
+    svc = SchedulerService(db)
+    config = await svc.update_config(SchedulerConfigUpdate(enabled=True))
+    return config
+
+
+@router.post("/scheduler/disable", response_model=SchedulerConfigOut)
+async def disable_scheduler(db: AsyncSession = Depends(get_db), admin: str = Depends(get_current_admin)):
+    svc = SchedulerService(db)
+    config = await svc.update_config(SchedulerConfigUpdate(enabled=False))
+    return config
+
+
+@router.post("/scheduler/trigger", response_model=dict)
+async def trigger_scheduler_run(
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    admin: str = Depends(get_current_admin),
+):
+    svc = SchedulerService(db)
+    config = await svc.ensure_config_exists()
+
+    if not config.enabled:
+        raise HTTPException(status_code=400, detail="Scheduler is disabled. Enable it first.")
+
+    result = await db.execute(select(Source).where(Source.is_active == True))
+    active_sources = result.scalars().all()
+
+    if not active_sources:
+        raise HTTPException(status_code=400, detail="No active sources found. Enable sources in the Sources tab first.")
+
+    engine = ParserEngine(db)
+    tasks_created = []
+
+    for src in active_sources:
+        parser_name = src.code
+        spec = get_parser_spec(parser_name)
+        if not spec or not spec.implemented:
+            continue
+
+        now = datetime.utcnow()
+        task_data = TaskCreate(
+            parser_name=parser_name,
+            date_from=now - timedelta(hours=config.interval_hours),
+            date_to=now,
+            filters={},
+            max_items=1000,
+        )
+        svc_task = TaskService(db)
+        task = await svc_task.create(task_data, triggered_by="scheduler")
+        background_tasks.add_task(engine.run_task, task.id)
+        tasks_created.append({"parser": parser_name, "task_id": str(task.id)})
+
+    return {"status": "triggered", "tasks": tasks_created}
