@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from parsers.adapters import HuggingFaceAdapter, RedditAdapter
+from parsers.adapters import ArxivAdapter, HuggingFaceAdapter, RedditAdapter
+from parsers.arxiv_parser import parse_arxiv_entry
 from parsers.base import BaseParser
 from parsers.pending import PendingParserAdapter
 from parsers.parse import HuggingFaceModelsParser, _clean_token as clean_hf_token
@@ -338,13 +339,61 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(normalized["domain"], ["Reddit"])
         self.assertEqual(normalized["framework"], [])
 
+    async def test_arxiv_adapter_fetches_through_shared_parser_and_normalizes(self):
+        captured = {}
+
+        def fake_fetch(**kwargs):
+            captured.update(kwargs)
+            return [{"external_id": "2401.12345"}]
+
+        with patch("parsers.adapters.fetch_arxiv_papers", side_effect=fake_fetch):
+            adapter = ArxivAdapter()
+            result = await adapter.fetch(
+                datetime(2024, 1, 1),
+                datetime(2024, 1, 2, tzinfo=timezone.utc),
+                filters={"categories": "cs.AI", "delay_seconds": 0},
+                max_items=5,
+                task_id=TASK_ID,
+            )
+
+        self.assertEqual(result, [{"external_id": "2401.12345"}])
+        self.assertEqual(captured["categories"], ["cs.AI"])
+        self.assertEqual(captured["max_total"], 5)
+        normalized = adapter.normalize({"citations": 4, "domain": None, "author": ["One", "Two"]})
+        self.assertEqual(normalized["popularity_metric"], 4)
+        self.assertEqual(normalized["domain"], [])
+        self.assertEqual(normalized["author"], "One, Two")
+
+    async def test_arxiv_entry_mapping(self):
+        item = parse_arxiv_entry(
+            {
+                "id": "https://arxiv.org/abs/2401.12345v2",
+                "title": " Test paper ",
+                "summary": " Abstract ",
+                "authors": [{"name": "Author"}],
+                "categories": [{"term": "cs.AI"}],
+                "published": "2024-01-01T00:00:00Z",
+                "updated": "2024-01-02T00:00:00Z",
+                "doi": "10.1000/test",
+            }
+        )
+
+        self.assertEqual(item["external_id"], "2401.12345")
+        self.assertEqual(item["title"], "Test paper")
+        self.assertEqual(item["domain"], ["cs.AI"])
+        self.assertEqual(item["doi"], "10.1000/test")
+
 
 class ParserRegistryTests(unittest.IsolatedAsyncioTestCase):
     async def test_registry_contains_implemented_and_pending_parser_slots(self):
         self.assertIsInstance(PARSER_REGISTRY["huggingface"], HuggingFaceAdapter)
         self.assertIsInstance(PARSER_REGISTRY["reddit"], RedditAdapter)
 
-        for code in ("github", "arxiv", "pypi"):
+        self.assertIsInstance(PARSER_REGISTRY["arxiv"], ArxivAdapter)
+        self.assertTrue(get_parser_spec("arxiv").implemented)
+        self.assertTrue(get_parser_spec("arxiv").is_active)
+
+        for code in ("github", "pypi"):
             with self.subTest(parser=code):
                 spec = get_parser_spec(code)
                 parser = PARSER_REGISTRY[code]
@@ -378,7 +427,7 @@ class ParserRegistryTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(payloads["huggingface"]["is_active"])
         self.assertTrue(payloads["reddit"]["is_active"])
         self.assertFalse(payloads["github"]["is_active"])
-        self.assertFalse(payloads["arxiv"]["is_active"])
+        self.assertTrue(payloads["arxiv"]["is_active"])
         self.assertFalse(payloads["pypi"]["is_active"])
 
 

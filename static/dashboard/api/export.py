@@ -2,7 +2,7 @@ import io
 import pandas as pd
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, Query
-from app.dependencies import get_data_provider
+from static.dashboard.dependencies import get_data_provider
 
 router = APIRouter(prefix="/api", tags=["export"])
 

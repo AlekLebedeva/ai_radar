@@ -14,6 +14,7 @@ import random
 import time
 import urllib.robotparser
 from calendar import monthrange
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -24,12 +25,31 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from config import Config
+@dataclass
+class ArxivConfig:
+    API_BASE_URL: str = "https://export.arxiv.org/api/query"
+    API_TIMEOUT: int = 60
+    USER_AGENT: str = "AI-Radar/1.0 (admin@ai-radar.local)"
+    MAX_RETRIES: int = 5
+    BACKOFF_FACTOR: float = 1.0
+    BASE_DELAY_SECONDS: float = 3.0
+    MAX_RESULTS_PER_REQUEST: int = 300
+    MAX_TOTAL_RESULTS: int = 10000
+    CACHE_TTL_SECONDS: int = 86400
+    CATEGORIES: List[str] = field(default_factory=lambda: ["cs.AI", "cs.CV", "cs.LG", "cs.CL"])
+    DATA_DIR: Path = Path("data")
+    LOGS_DIR: Path = Path("logs/arxiv")
+    CACHE_DIR: Path = Path("data/cache/arxiv")
+    PROGRESS_FILE: Path = Path("data/arxiv_progress.json")
+    REQUEST_LOG_FILE: Path = Path("data/arxiv_requests.json")
+    CSV_PATH: Path = Path("data/raw_items_arxiv.csv")
+    EXCEL_PATH: Path = Path("data/raw_items_arxiv.xlsx")
+    PG_CONFIG: Dict[str, Any] = field(default_factory=dict)
 
 # ----------------------------------------------------------------------
 #  Инициализация конфигурации
 # ----------------------------------------------------------------------
-config = Config()
+config = ArxivConfig()
 
 # ----------------------------------------------------------------------
 #  Логгер
@@ -315,7 +335,7 @@ def fetch_arxiv_papers(
     request_tracker: Optional[RequestTracker],
     task_id: str,
     logger: logging.Logger,
-    config_obj: Config,
+    config_obj: ArxivConfig,
     max_results_per_request: int = 300,
     max_total: int = 10000,
     delay_seconds: float = 3.0,
@@ -339,17 +359,20 @@ def fetch_arxiv_papers(
     )
 
     for cat in categories:
+        if len(all_records) >= max_total:
+            break
+        category_limit = max_total - len(all_records)
         logger.info(f"Обработка категории: {cat}")
         search_query = f"cat:{cat}+AND+submittedDate:[{start_str}+TO+{end_str}]"
         start = 0
         total_fetched_for_cat = 0
         category_records = []
 
-        while total_fetched_for_cat < max_total:
+        while total_fetched_for_cat < category_limit:
             params = {
                 'search_query': search_query,
                 'start': start,
-                'max_results': min(max_results_per_request, max_total - total_fetched_for_cat),
+                'max_results': min(max_results_per_request, category_limit - total_fetched_for_cat),
                 'sortBy': 'submittedDate',
                 'sortOrder': 'descending'
             }

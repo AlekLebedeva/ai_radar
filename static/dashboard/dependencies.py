@@ -1,4 +1,4 @@
-from app.providers.base import DataProvider
+from static.dashboard.providers.base import DataProvider
 
 _provider: DataProvider = None
 

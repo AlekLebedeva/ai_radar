@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Tuple
 import pandas as pd
-from app.models.schemas import ModelCard, ModelDetail, SourceInfo, StatsResponse
+from static.dashboard.models.schemas import ModelCard, ModelDetail, SourceInfo, StatsResponse
 
 class DataProvider:
     """Базовый класс для получения данных из разных источников"""

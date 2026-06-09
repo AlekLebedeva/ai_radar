@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from parsers.base import BaseParser
+from parsers.arxiv_parser import ArxivConfig, fetch_arxiv_papers, setup_logger
 from parsers.parse import HuggingFaceModelsParser
 from parsers.reddit_parser import RedditParser
 from parsers.task import ParserRunTask
@@ -89,6 +90,49 @@ class RedditAdapter(BaseParser):
         item["created_at_source"] = _as_utc_naive(item.get("created_at_source"))
         item["updated_at_source"] = _as_utc_naive(item.get("updated_at_source"))
         item["domain"] = item.get("domain") or ["Reddit"]
+        item["tags"] = item.get("tags") or []
+        item["language"] = item.get("language") or []
+        item["framework"] = item.get("framework") or []
+        item["task_type"] = item.get("task_type") or []
+        return item
+
+
+class ArxivAdapter(BaseParser):
+    def __init__(self):
+        super().__init__("arxiv", "arXiv", "https://export.arxiv.org/api/query")
+
+    async def fetch(self, date_from, date_to, filters=None, max_items=1000, task_id: Optional[uuid.UUID] = None):
+        filters = filters or {}
+        config = ArxivConfig()
+        categories = filters.get("categories") or config.CATEGORIES
+        if isinstance(categories, str):
+            categories = [categories]
+        run_id = str(task_id or uuid.uuid4())
+
+        return await asyncio.to_thread(
+            fetch_arxiv_papers,
+            start_date=_as_utc_aware(date_from).date().isoformat(),
+            end_date=_as_utc_aware(date_to).date().isoformat(),
+            categories=categories,
+            progress_tracker=None,
+            request_tracker=None,
+            task_id=run_id,
+            logger=setup_logger(run_id),
+            config_obj=config,
+            max_results_per_request=min(int(filters.get("page_size", 100)), 300),
+            max_total=max_items,
+            delay_seconds=float(filters.get("delay_seconds", 3) or 0),
+            cache=None,
+        )
+
+    def normalize(self, raw_item: dict[str, Any]) -> dict[str, Any]:
+        item = dict(raw_item)
+        if isinstance(item.get("author"), list):
+            item["author"] = ", ".join(str(author) for author in item["author"] if author)
+        item["popularity_metric"] = item.get("popularity_metric") or item.get("citations")
+        item["created_at_source"] = _as_utc_naive(item.get("created_at_source"))
+        item["updated_at_source"] = _as_utc_naive(item.get("updated_at_source"))
+        item["domain"] = item.get("domain") or []
         item["tags"] = item.get("tags") or []
         item["language"] = item.get("language") or []
         item["framework"] = item.get("framework") or []

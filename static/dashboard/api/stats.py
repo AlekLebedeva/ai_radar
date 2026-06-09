@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query, Depends
-from app.models.schemas import StatsResponse
-from app.dependencies import get_data_provider
+from static.dashboard.models.schemas import StatsResponse
+from static.dashboard.dependencies import get_data_provider
 
 router = APIRouter(prefix="/api", tags=["stats"])
 

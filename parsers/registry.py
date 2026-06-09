@@ -46,11 +46,9 @@ PARSER_SPECS: tuple[ParserSpec, ...] = (
     ParserSpec(
         code="arxiv",
         name="arXiv",
-        api_base_url="http://export.arxiv.org/api",
+        api_base_url="https://export.arxiv.org/api/query",
         api_doc_url="https://arxiv.org/help/api",
         rate_limit={"rpm": 20},
-        is_active=False,
-        implemented=False,
     ),
     ParserSpec(
         code="pypi",
@@ -73,6 +71,10 @@ def _build_parser_factory(spec: ParserSpec) -> Callable[[], BaseParser]:
         from parsers.adapters import RedditAdapter
 
         return RedditAdapter
+    if spec.code == "arxiv":
+        from parsers.adapters import ArxivAdapter
+
+        return ArxivAdapter
 
     def factory() -> BaseParser:
         from parsers.pending import PendingParserAdapter

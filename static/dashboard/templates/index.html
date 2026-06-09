@@ -88,7 +88,7 @@
             
             useEffect(() => {
                 if (modelId) {
-                    axios.get(`/api/models/${modelId}`).then(res => {
+                    axios.get(`api/models/${modelId}`).then(res => {
                         setModel(res.data);
                         setLoading(false);
                     }).catch(err => {
@@ -172,18 +172,18 @@
                     ...(filters.date_to && { date_to: filters.date_to }),
                     ...(filters.min_popularity && { min_popularity: filters.min_popularity })
                 });
-                const res = await axios.get(`/api/models?${params}`);
+                const res = await axios.get(`api/models?${params}`);
                 setModels(res.data.items);
                 setTotal(res.data.total);
             };
             
             const fetchSources = async () => {
-                const res = await axios.get('/api/sources');
+                const res = await axios.get('api/sources');
                 setSources(res.data);
             };
             
             const fetchStats = async () => {
-                const res = await axios.get(`/api/stats?period=${statsPeriod}`);
+                const res = await axios.get(`api/stats?period=${statsPeriod}`);
                 setStats(res.data);
             };
             
@@ -212,12 +212,12 @@
             
             const handleAIFilter = async () => {
                 if (!aiQuery) return;
-                await axios.post('/api/ai-filter', { query: aiQuery });
+                await axios.post('api/ai-filter', { query: aiQuery });
                 alert(`AI-фильтр пока заглушка. Запрос: "${aiQuery}"`);
             };
             
             const handleVectorSearch = async (modelId) => {
-                await axios.post('/api/vector-search', { model_id: modelId });
+                await axios.post('api/vector-search', { model_id: modelId });
                 alert(`Векторный поиск заглушка для модели ${modelId}`);
             };
             
@@ -228,7 +228,7 @@
                 if (filters.date_from) params.append('date_from', filters.date_from);
                 if (filters.date_to) params.append('date_to', filters.date_to);
                 if (filters.min_popularity) params.append('min_popularity', filters.min_popularity);
-                const url = `/api/export_csv?${params.toString()}`;
+                const url = `api/export_csv?${params.toString()}`;
                 window.location.href = url;
             };
             const exportXLSX = () => {
@@ -238,7 +238,7 @@
                 if (filters.date_from) params.append('date_from', filters.date_from);
                 if (filters.date_to) params.append('date_to', filters.date_to);
                 if (filters.min_popularity) params.append('min_popularity', filters.min_popularity);
-                window.location.href = `/api/export_xlsx?${params.toString()}`;
+                window.location.href = `api/export_xlsx?${params.toString()}`;
             };
             // Если выбран ID модели – показываем детальную страницу
             if (selectedModelId) {
