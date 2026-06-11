@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import (
-    String, Text, DateTime, Integer, Float, Boolean, JSON, ForeignKey
+    String, Text, DateTime, Integer, Float, Boolean, JSON, ForeignKey, UniqueConstraint
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -102,6 +102,8 @@ class ParserTask(Base):
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
     triggered_by: Mapped[str] = mapped_column(String(20), default="admin")
     filters: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    max_items: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     source: Mapped["Source"] = relationship(back_populates="tasks")
 
@@ -120,6 +122,53 @@ class ParserLog(Base):
     details: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    profile: Mapped[Optional["UserProfile"]] = relationship(
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    interests: Mapped[List["UserInterest"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
+
+class UserProfile(Base):
+    __tablename__ = "user_profiles"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True
+    )
+    display_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    email_notifications: Mapped[bool] = mapped_column(Boolean, default=True)
+    digest_frequency: Mapped[str] = mapped_column(String(20), default="daily")
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    settings: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="profile")
+
+
+class UserInterest(Base):
+    __tablename__ = "user_interests"
+    __table_args__ = (UniqueConstraint("user_id", "category", name="uq_user_interest_category"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    weight: Mapped[float] = mapped_column(Float, default=1.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="interests")
+
+
 class UserActivityLog(Base):
     __tablename__ = "user_activity_logs"
 
@@ -128,4 +177,17 @@ class UserActivityLog(Base):
     action: Mapped[str] = mapped_column(String(50), nullable=False)
     session_duration_sec: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     meta: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class SchedulerConfig(Base):
+    __tablename__ = "scheduler_config"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    interval_hours: Mapped[int] = mapped_column(Integer, default=48)
+    start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_run: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    next_run: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

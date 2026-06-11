@@ -1,16 +1,17 @@
 import os
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-from app.config import MODE, POSTGRES_DSN
-from app.providers.csv_provider import CSVDataProvider
-from app.providers.postgres_provider import PostgresDataProvider
-from app import dependencies
-from app.api import models, sources, stats, export, ai
+from static.dashboard.config import MODE, POSTGRES_DSN
+from static.dashboard.providers.csv_provider import CSVDataProvider
+from static.dashboard import dependencies
+from static.dashboard.api import models, sources, stats, export, ai
 
 # Инициализация провайдера
 if MODE == "test":
     data_provider = CSVDataProvider()
 else:
+    from static.dashboard.providers.postgres_provider import PostgresDataProvider
+
     data_provider = PostgresDataProvider(POSTGRES_DSN)
 
 # Сохраняем провайдера в центральном месте

@@ -43,9 +43,9 @@ def _ensure_engine():
     try:
         _engine = _init_postgres()
         _db_type = "postgres"
-        print("[DB] PostgreSQL connected")
+        print("[DB] PostgreSQL engine created")
     except Exception as e:
-        print(f"[DB] PostgreSQL failed: {e}")
+        print(f"[DB] PostgreSQL failed: {type(e).__name__}")
         print("[DB] Switching to SQLite (demo mode)")
         _engine = _init_sqlite()
         _db_type = "sqlite"
@@ -69,10 +69,58 @@ def _ensure_session_factory():
     return _session_factory
 
 
+async def init_engine_for_app():
+    """Initialize the best available database engine for FastAPI startup."""
+    global _engine, _session_factory, _db_type
+
+    try:
+        if _engine is None or _db_type != "postgres":
+            _engine = _init_postgres()
+            _db_type = "postgres"
+        async with _engine.connect():
+            pass
+        print("[DB] PostgreSQL connection verified")
+    except Exception as exc:
+        print(f"[DB] PostgreSQL startup failed: {type(exc).__name__}")
+        print("[DB] Switching to SQLite (demo mode)")
+        if _engine is not None:
+            await _engine.dispose()
+        _engine = _init_sqlite()
+        _db_type = "sqlite"
+
+    _session_factory = async_sessionmaker(
+        _engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+    return _engine
+
+
 async def get_db() -> AsyncSession:
     """FastAPI dependency — yields async DB session.
     Engine is created on first HTTP request, NOT at import."""
+    global _engine, _session_factory, _db_type
+
     factory = _ensure_session_factory()
+
+    if _db_type == "postgres" and _engine is not None:
+        try:
+            async with _engine.connect() as conn:
+                pass
+        except Exception as exc:
+            print(f"[DB] PostgreSQL connect failed: {type(exc).__name__}")
+            print("[DB] Switching to SQLite (demo mode)")
+            _engine = _init_sqlite()
+            _db_type = "sqlite"
+            _session_factory = async_sessionmaker(
+                _engine,
+                class_=AsyncSession,
+                expire_on_commit=False,
+                autoflush=False,
+            )
+            factory = _session_factory
+
     async with factory() as session:
         try:
             yield session

@@ -12,15 +12,6 @@
     <link rel="stylesheet" href="/app/static/css/landing.css">
 </head>
 <body>
-    <!-- Demo mode toggle (top-right corner) -->
-    <div class="demo-toggle" id="demo-toggle">
-        <label class="switch">
-            <input type="checkbox" id="demo-checkbox" checked>
-            <span class="slider"></span>
-        </label>
-        <span class="demo-label">Demo режим</span>
-    </div>
-
     <!-- ONBOARDING SCREEN -->
     <div class="screen active" id="screen-onboarding">
         <div class="onboarding-container">
@@ -131,20 +122,13 @@
 
     <!-- TILE PAGES (empty placeholders for now) -->
     <div class="screen" id="screen-dashboard">
-        <header class="header">
-            <div class="logo">
-                <span class="logo-icon">&#9673;</span>
-                <span>AI RADAR</span>
-            </div>
-            <nav class="nav">
-                <a href="#" class="btn-back" data-back="main">&larr; Назад</a>
-            </nav>
-        </header>
-        <div class="placeholder-page">
-            <div class="placeholder-icon">&#128200;</div>
-            <h2>Дашборд</h2>
-            <p>Страница в разработке. Здесь будет React-приложение с таблицей моделей, фильтрами и экспортом.</p>
-            <button class="btn btn-secondary" data-back="main">Вернуться</button>
+        <button class="dashboard-back" data-back="main" title="Вернуться в приложение" aria-label="Вернуться в приложение">&larr;</button>
+        <div class="app-dashboard-shell">
+            <iframe
+                class="app-dashboard-frame"
+                title="AI Radar Model Dashboard"
+                src="/dashboard/">
+            </iframe>
         </div>
     </div>
 

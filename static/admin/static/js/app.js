@@ -14,10 +14,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial load
     loadPage(currentPage);
 
-    // Auto-refresh dashboard every 10s
+    // Auto-refresh dashboard and pipeline every 10s (skip if user is editing)
     refreshInterval = setInterval(() => {
         if (currentPage === 'dashboard') {
             loadDashboard();
+        } else if (currentPage === 'pipeline') {
+            const active = document.activeElement;
+            if (active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'TEXTAREA')) {
+                return;
+            }
+            loadPipeline();
+            loadScheduler();
         }
     }, 10000);
 });
@@ -50,6 +57,7 @@ function switchPage(page) {
         logs: 'Логи',
         sources: 'Источники',
         dbstats: 'База данных',
+        grafana: 'Grafana',
     };
     document.getElementById('page-title').textContent = titles[page] || page;
 
@@ -68,6 +76,7 @@ function loadPage(page) {
             break;
         case 'pipeline':
             loadPipeline();
+            loadScheduler();
             break;
         case 'tasks':
             loadTasks();
@@ -80,6 +89,8 @@ function loadPage(page) {
             break;
         case 'dbstats':
             loadDbStats();
+            break;
+        case 'grafana':
             break;
     }
 }

@@ -72,7 +72,9 @@ def init_sqlite():
             error_log TEXT,
             retry_count INTEGER DEFAULT 0,
             triggered_by TEXT DEFAULT 'admin',
-            filters TEXT
+            filters TEXT,
+            max_items INTEGER DEFAULT 1000,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
         """,
         """
@@ -119,6 +121,34 @@ def init_sqlite():
         )
         """,
         """
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            last_login TEXT
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            user_id TEXT PRIMARY KEY,
+            display_name TEXT,
+            email TEXT,
+            email_notifications INTEGER DEFAULT 1,
+            digest_frequency TEXT DEFAULT 'daily',
+            onboarding_completed INTEGER DEFAULT 0,
+            settings TEXT
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS user_interests (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            category TEXT NOT NULL,
+            weight REAL DEFAULT 1.0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, category)
+        )
+        """,
+        """
         CREATE TABLE IF NOT EXISTS user_activity_logs (
             id TEXT PRIMARY KEY,
             user_id TEXT,
@@ -133,11 +163,14 @@ def init_sqlite():
     for sql in tables:
         conn.execute(sql)
 
+    _ensure_sqlite_schema(conn)
+
     # Insert default sources if empty
     cursor = conn.execute("SELECT COUNT(*) FROM sources")
     if cursor.fetchone()[0] == 0:
         default_sources = [
-            ("src_hf", "HuggingFace", "huggingface", "https://huggingface.co/api", "https://huggingface.co/docs/api", "token_header", '{"rpm": 100}', 1),
+            ("huggingface", "HuggingFace", "huggingface", "https://huggingface.co/api", "https://huggingface.co/docs/api", "token_header", '{"rpm": 100}', 1),
+            ("reddit", "Reddit", "reddit", "https://oauth.reddit.com", "https://www.reddit.com/dev/api", "oauth2", '{"rpm": 60}', 1),
             ("src_gh", "GitHub", "github", "https://api.github.com", "https://docs.github.com/en/rest", "token_header", '{"rpm": 30}', 1),
             ("src_arx", "arXiv", "arxiv", "http://export.arxiv.org/api", "https://arxiv.org/help/api", "none", '{"rpm": 20}', 1),
             ("src_pypi", "PyPI", "pypi", "https://pypi.org/pypi", "https://docs.pypi.org/api", "none", '{"rpm": 60}', 1),
@@ -151,6 +184,19 @@ def init_sqlite():
     conn.commit()
     conn.close()
     return str(DB_PATH)
+
+
+def _ensure_sqlite_schema(conn):
+    """Ensure compatibility for older SQLite DB files."""
+    existing = [row[1] for row in conn.execute("PRAGMA table_info(parser_tasks)")]
+    if "created_at" not in existing:
+        conn.execute(
+            "ALTER TABLE parser_tasks ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP"
+        )
+    if "max_items" not in existing:
+        conn.execute(
+            "ALTER TABLE parser_tasks ADD COLUMN max_items INTEGER DEFAULT 1000"
+        )
 
 
 @contextmanager

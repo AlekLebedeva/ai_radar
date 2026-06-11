@@ -9,17 +9,6 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
     <!-- Мгновенная проверка сессии ДО загрузки ресурсов -->
-    <script>
-        (function(){
-            if(!document.cookie.includes('ai_radar_admin_session')){
-                window.location.replace('/admin/login');
-                document.write('');
-                document.close();
-                throw new Error('Unauthorized');
-            }
-        })();
-    </script>
-
     <link rel="stylesheet" href="/admin/static/css/base.css">
     <link rel="stylesheet" href="/admin/static/css/components.css">
     <link rel="stylesheet" href="/admin/static/css/modal.css">
@@ -59,6 +48,10 @@
                 <a href="#" class="nav-item" data-page="dbstats">
                     <span class="nav-icon">&#128452;</span>
                     <span class="nav-label">База данных</span>
+                </a>
+                <a href="#" class="nav-item" data-page="grafana">
+                    <span class="nav-icon">&#128200;</span>
+                    <span class="nav-label">Grafana</span>
                 </a>
             </nav>
             <div class="sidebar-footer">
@@ -126,6 +119,55 @@
             </div>
 
             <div class="page" id="page-pipeline">
+                <div class="dashboard-row">
+                    <div class="panel panel-wide">
+                        <div class="panel-header">
+                            <h3>Шедулер парсеров (48ч)</h3>
+                            <div class="scheduler-actions">
+                                <button class="btn btn-primary" id="btn-scheduler-enable">Включить</button>
+                                <button class="btn btn-secondary" id="btn-scheduler-disable">Выключить</button>
+                                <button class="btn btn-accent" id="btn-scheduler-trigger">Запустить сейчас</button>
+                            </div>
+                        </div>
+                        <div class="scheduler-info" id="scheduler-info">
+                            <div class="scheduler-status">
+                                <span class="scheduler-indicator" id="scheduler-indicator">&#9679;</span>
+                                <span id="scheduler-status-text">Загрузка...</span>
+                            </div>
+                            <div class="scheduler-details">
+                                <div class="scheduler-detail">
+                                    <span class="detail-label">Интервал:</span>
+                                    <span id="scheduler-interval">48</span> ч
+                                </div>
+                                <div class="scheduler-detail">
+                                    <span class="detail-label">Последний запуск:</span>
+                                    <span id="scheduler-last-run">-</span>
+                                </div>
+                                <div class="scheduler-detail">
+                                    <span class="detail-label">Следующий запуск:</span>
+                                    <span id="scheduler-next-run">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="scheduler-settings">
+                            <h4>Настройки</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Интервал (часы)</label>
+                                    <input type="number" class="form-control" id="scheduler-interval-input" value="48" min="1" max="168">
+                                </div>
+                                <div class="form-group">
+                                    <label>Дата старта</label>
+                                    <input type="datetime-local" class="form-control" id="scheduler-start-date">
+                                </div>
+                            </div>
+                            <div class="form-info">
+                                <span class="text-muted">Шедулер запускает только активные источники (управление в разделе <a href="#" data-page="sources" class="link">Источники</a>)</span>
+                            </div>
+                            <button class="btn btn-primary" id="btn-scheduler-save">Сохранить настройки</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="panel">
                     <div class="panel-header">
                         <h3>Pipeline Status (DAG)</h3>
@@ -179,10 +221,10 @@
                                     <select class="form-control" id="task-parser" required>
                                         <option value="">Выберите...</option>
                                         <option value="huggingface">HuggingFace</option>
+                                        <option value="reddit">Reddit</option>
                                         <option value="github">GitHub</option>
                                         <option value="arxiv">arXiv</option>
                                         <option value="pypi">PyPI</option>
-                                        <option value="web">Web/Reddit</option>
                                     </select>
                                 </div>
                                 <div class="form-row">
@@ -220,10 +262,10 @@
                         <select class="filter-select" id="filter-log-parser">
                             <option value="">Все парсеры</option>
                             <option value="huggingface">HuggingFace</option>
+                            <option value="reddit">Reddit</option>
                             <option value="github">GitHub</option>
                             <option value="arxiv">arXiv</option>
                             <option value="pypi">PyPI</option>
-                            <option value="web">Web</option>
                         </select>
                         <select class="filter-select" id="filter-log-status">
                             <option value="">Все статусы</option>
@@ -268,6 +310,21 @@
                     </div>
                 </div>
             </div>
+
+            <div class="page" id="page-grafana">
+                <div class="panel grafana-panel">
+                    <div class="panel-header">
+                        <h3>Grafana Dashboard</h3>
+                        <a class="btn btn-secondary" href="http://localhost:3000/d/ai-radar-overview/ai-radar-overview?orgId=1&kiosk" target="_blank" rel="noreferrer">Open Grafana</a>
+                    </div>
+                    <iframe
+                        class="grafana-frame"
+                        title="AI Radar Grafana Dashboard"
+                        src="http://localhost:3000/d/ai-radar-overview/ai-radar-overview?orgId=1&kiosk">
+                    </iframe>
+                </div>
+            </div>
+
         </main>
     </div>
     <div class="toast-container" id="toast-container"></div>
@@ -277,6 +334,7 @@
     <script src="/admin/static/js/modal.js"></script>
     <script src="/admin/static/js/pages/dashboard.js"></script>
     <script src="/admin/static/js/pages/pipeline.js"></script>
+    <script src="/admin/static/js/pages/scheduler.js"></script>
     <script src="/admin/static/js/pages/tasks.js"></script>
     <script src="/admin/static/js/pages/logs.js"></script>
     <script src="/admin/static/js/pages/sources.js"></script>

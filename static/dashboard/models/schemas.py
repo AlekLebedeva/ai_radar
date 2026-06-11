@@ -1,8 +1,10 @@
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class ModelCard(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     id: str
     title: str
     category: Optional[str] = None

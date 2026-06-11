@@ -21,7 +21,9 @@ class SourceOut(BaseModel):
     name: str
     code: str
     api_base_url: Optional[str]
+    api_doc_url: Optional[str]
     auth_type: Optional[str]
+    rate_limit: Optional[Dict[str, Any]]
     is_active: bool
     created_at: datetime
 
@@ -38,6 +40,29 @@ class TaskCreate(BaseModel):
     max_items: Optional[int] = 1000
 
 
+class HuggingFaceTaskCreate(BaseModel):
+    date_from: datetime
+    date_to: datetime
+    filters: Optional[Dict[str, Any]] = None
+    max_items: Optional[int] = 1000
+
+
+class RedditTaskCreate(BaseModel):
+    date_from: datetime
+    date_to: datetime
+    filters: Dict[str, Any] = Field(
+        default_factory=lambda: {"subreddit": "MachineLearning", "sort": "hot"}
+    )
+    max_items: Optional[int] = 100
+
+
+class ParserRunCreate(BaseModel):
+    date_from: datetime
+    date_to: datetime
+    filters: Optional[Dict[str, Any]] = None
+    max_items: Optional[int] = 1000
+
+
 class TaskOut(BaseModel):
     id: UUID
     parser_name: str
@@ -48,6 +73,8 @@ class TaskOut(BaseModel):
     items_new: int
     started_at: Optional[datetime]
     finished_at: Optional[datetime]
+    created_at: datetime
+    max_items: Optional[int]
     error_log: Optional[str]
     retry_count: int
     triggered_by: str
@@ -117,3 +144,23 @@ class PipelineEdge(BaseModel):
 class PipelineStatus(BaseModel):
     nodes: List[PipelineNode]
     edges: List[PipelineEdge]
+
+
+# ─── Scheduler ───
+class SchedulerConfigOut(BaseModel):
+    enabled: bool
+    interval_hours: int
+    start_date: Optional[datetime]
+    last_run: Optional[datetime]
+    next_run: Optional[datetime]
+    updated_at: datetime
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SchedulerConfigUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    interval_hours: Optional[int] = None
+    start_date: Optional[datetime] = None

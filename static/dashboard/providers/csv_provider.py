@@ -2,9 +2,10 @@ import os
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Tuple
-from app.config import DATA_DIR, DATA_SOURCE
-from app.models.schemas import ModelCard, ModelDetail, SourceInfo, StatsResponse
-from app.providers.base import DataProvider
+from fastapi import HTTPException
+from static.dashboard.config import DATA_DIR, DATA_SOURCE
+from static.dashboard.models.schemas import ModelCard, ModelDetail, SourceInfo, StatsResponse
+from static.dashboard.providers.base import DataProvider
 
 class CSVDataProvider(DataProvider):
     def __init__(self):

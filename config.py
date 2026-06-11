@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -12,10 +13,36 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password: str = "admin"
 
+    # ─── External Services ───
+    auth_service_url: str = "http://localhost:8001"
+
+    # ─── Scheduler ───
+    scheduler_interval_hours: int = 48
+    scheduler_enabled: bool = False
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def parse_debug_mode(cls, value):
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"release", "production", "prod"}:
+                return False
+            if normalized in {"debug", "development", "dev"}:
+                return True
+        return value
+
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+SERVICES = {
+    "auth": {
+        "url": get_settings().auth_service_url
+    }
+}

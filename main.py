@@ -6,27 +6,61 @@ AI Radar — Main Application Entry Point
 import uvicorn
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, FileResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from admin.router import router as admin_router
+from user.router import router as user_router
 from admin.auth import verify_session
+from static.dashboard.main import app as dashboard_app
 from database.base import Base
-from database.session import get_engine_for_lifespan, is_postgres
+from database.session import init_engine_for_app, is_postgres
+from database.bootstrap import seed_default_sources
+from admin.service import SchedulerService
+from admin.schemas import SchedulerConfigUpdate
+from parsers.scheduler import BackgroundScheduler
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+
+_scheduler: BackgroundScheduler | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    engine = get_engine_for_lifespan()
+    global _scheduler
+    engine = await init_engine_for_app()
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
     if is_postgres():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+
+        async with session_factory() as session:
+            await seed_default_sources(session)
+
+    app.state.http_client = httpx.AsyncClient(timeout=10.0)
+
+    _scheduler = BackgroundScheduler(session_factory)
+    app.state.scheduler = _scheduler
+
+    async with session_factory() as session:
+        svc = SchedulerService(session)
+        await svc.ensure_config_exists()
+
+    if _scheduler:
+        asyncio.create_task(_scheduler.start())
+
     yield
+
+    if _scheduler:
+        await _scheduler.stop()
+    await app.state.http_client.aclose()
     await engine.dispose()
 
 
@@ -34,7 +68,7 @@ app = FastAPI(
     title="AI Radar",
     description="Automated AI innovation monitoring system",
     version="1.0.0",
-    #lifespan=lifespan,
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -52,12 +86,13 @@ app.add_middleware(
 # ═══════════════════════════════════════════════════════
 class AdminAuthMiddleware(BaseHTTPMiddleware):
     PUBLIC_PATHS = {"/admin/login", "/admin/login.html", "/admin/static/"}
+    PROTECTED_PREFIXES = ("/admin",)
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
 
         # Не /admin — пропускаем
-        if not path.startswith("/admin"):
+        if not path.startswith(self.PROTECTED_PREFIXES):
             return await call_next(request)
 
         # Публичные пути — пропускаем
@@ -89,13 +124,16 @@ app.add_middleware(AdminAuthMiddleware)
 #  Static files — после middleware!
 # ═══════════════════════════════════════════════════════
 app.mount("/app/static", StaticFiles(directory="static/app/static"), name="app_static")
+app.mount("/dashboard", dashboard_app, name="dashboard")
 
 # Admin static — через кастомный handler с проверкой
 class ProtectedStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
         request = Request(scope)
         # Проверяем сессию для всего кроме login страницы
-        if not path.startswith("login") and not path.startswith("js/login"):
+        # Нормализуем путь для кроссплатформенности (Windows использует \)
+        norm_path = path.replace("\\", "/")
+        if not norm_path.startswith("login") and not norm_path.startswith("js/login"):
             try:
                 verify_session(request)
             except Exception:
@@ -152,6 +190,7 @@ async def admin_spa(request: Request, path: str = ""):
 #  API routes
 # ═══════════════════════════════════════════════════════
 app.include_router(admin_router)
+app.include_router(user_router)
 
 
 @app.get("/")
@@ -177,7 +216,7 @@ async def health():
         "status": "ok",
         "service": "ai-radar",
         "version": "1.0.0",
-        "database": "postgresql" if is_postgres() else "sqlite (demo)",
+        "database": "postgresql" if is_postgres() else "Error db server",
     }
 
 
@@ -196,6 +235,6 @@ if __name__ == "__main__":
         "main:app",
         host="127.0.0.1",
         port=8000,
-        reload=True,
+        reload=False,
         log_level="info",
     )

@@ -1,19 +1,24 @@
 import pandas as pd
 from typing import List, Dict, Any, Tuple
-import psycopg2
+import psycopg
 from fastapi import HTTPException
-from app.models.schemas import ModelCard, ModelDetail, SourceInfo, StatsResponse
-from app.providers.base import DataProvider
+from static.dashboard.models.schemas import ModelCard, ModelDetail, SourceInfo, StatsResponse
+from static.dashboard.providers.base import DataProvider
 
 class PostgresDataProvider(DataProvider):
     def __init__(self, dsn: str):
         self.dsn = dsn
         # ВНИМАНИЕ: синхронное соединение в асинхронном приложении – упрощение для демонстрации.
         # В реальном проекте используйте asyncpg или SQLAlchemy с асинхронным драйвером.
-        self.conn = psycopg2.connect(dsn)
+        self.conn = None
+
+    def _get_conn(self):
+        if self.conn is None or self.conn.closed:
+            self.conn = psycopg.connect(self.dsn)
+        return self.conn
 
     async def get_models(self, filters: dict, page: int, limit: int, sort_by: str) -> Tuple[List[ModelCard], int]:
-        cursor = self.conn.cursor()
+        cursor = self._get_conn().cursor()
         base_query = """
             SELECT 
                 COALESCE(e.id, r.id) as id,
@@ -65,7 +70,7 @@ class PostgresDataProvider(DataProvider):
         models = []
         for row in rows:
             models.append(ModelCard(
-                id=row[0],
+                id=str(row[0]),
                 title=row[1],
                 category=row[2],
                 license=row[3],
@@ -78,7 +83,7 @@ class PostgresDataProvider(DataProvider):
         return models, total
 
     async def get_model_detail(self, model_id: str) -> ModelDetail:
-        cursor = self.conn.cursor()
+        cursor = self._get_conn().cursor()
         cursor.execute("SELECT * FROM raw_items WHERE id = %s", (model_id,))
         raw_row = cursor.fetchone()
         raw_cols = [desc[0] for desc in cursor.description] if raw_row else []
@@ -95,14 +100,14 @@ class PostgresDataProvider(DataProvider):
         return ModelDetail(raw=raw_dict, enriched=enriched_dict)
 
     async def get_sources(self) -> List[SourceInfo]:
-        cursor = self.conn.cursor()
+        cursor = self._get_conn().cursor()
         cursor.execute("SELECT id, name, code, is_active FROM sources")
         rows = cursor.fetchall()
         cursor.close()
         return [SourceInfo(id=str(r[0]), name=r[1], code=r[2], is_active=r[3]) for r in rows]
 
     async def get_stats(self, period: str) -> StatsResponse:
-        cursor = self.conn.cursor()
+        cursor = self._get_conn().cursor()
         date_filter = ""
         if period == 'week':
             date_filter = "AND r.created_at_source > NOW() - INTERVAL '7 days'"

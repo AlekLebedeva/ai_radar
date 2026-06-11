@@ -380,7 +380,7 @@
             
             useEffect(() => {
                 if (modelId) {
-                    axios.get(`/api/models/${modelId}`).then(res => {
+                    axios.get(`api/models/${modelId}`).then(res => {
                         setModel(res.data);
                         setLoading(false);
                     }).catch(err => {
@@ -510,12 +510,12 @@
             
             const handleAIFilter = async () => {
                 if (!aiQuery) return;
-                await axios.post('/api/ai-filter', { query: aiQuery });
+                await axios.post('api/ai-filter', { query: aiQuery });
                 alert(`AI-фильтр пока заглушка. Запрос: "${aiQuery}"`);
             };
             
             const handleVectorSearch = async (modelId) => {
-                await axios.post('/api/vector-search', { model_id: modelId });
+                await axios.post('api/vector-search', { model_id: modelId });
                 alert(`Векторный поиск заглушка для модели ${modelId}`);
             };
             
@@ -535,7 +535,7 @@
                 if (filters.date_from) params.append('date_from', filters.date_from);
                 if (filters.date_to) params.append('date_to', filters.date_to);
                 if (filters.min_popularity) params.append('min_popularity', filters.min_popularity);
-                window.location.href = `/api/export_xlsx?${params.toString()}`;
+                window.location.href = `api/export_xlsx?${params.toString()}`;
             };
             
             if (selectedModelId) {
